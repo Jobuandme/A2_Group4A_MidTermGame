@@ -1,18 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blind Flight — Bat Platformer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="game-container"></div>
 
-    <title>Sketch</title>
+  <!-- p5.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
 
-    <link rel="stylesheet" type="text/css" href="style.css">
+  <!-- Constants (must load first) -->
+  <script src="src/constants.js"></script>
 
-    <script src="libraries/p5.min.js"></script>
-    <script src="libraries/p5.sound.min.js"></script>
-  </head>
+  <!-- World -->
+  <script src="src/world/LevelData.js"></script>
+  <script src="src/world/Platform.js"></script>
 
-  <body>
-    <script src="sketch.js"></script>
-  </body>
+  <!-- Entities -->
+  <script src="src/entities/Hazard.js"></script>
+  <script src="src/entities/Fruit.js"></script>
+
+  <!-- Systems -->
+  <script src="src/systems/Physics.js"></script>
+  <script src="src/systems/Camera.js"></script>
+  <script src="src/systems/Echolocation.js"></script>
+  <script src="src/systems/Visibility.js"></script>
+
+  <!-- World (Level depends on Platform + entities) -->
+  <script src="src/world/Level.js"></script>
+
+  <!-- Entities (Player depends on Physics) -->
+  <script src="src/entities/Player.js"></script>
+
+  <!-- UI -->
+  <script src="src/ui/HUD.js"></script>
+  <script src="src/ui/WelcomeScreen.js"></script>
+  <script src="src/ui/TutorialScreen.js"></script>
+
+  <!-- Main (last) -->
+  <script src="src/main.js"></script>
+</body>
 </html>
