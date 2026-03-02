@@ -8,6 +8,7 @@ class Spike {
     this.h = C.TILE;
   }
 
+  // Draw spike fill — visible only inside vision circle
   draw(p) {
     const T = C.TILE;
     const numSpikes = 3;
@@ -18,26 +19,6 @@ class Spike {
 
     for (let i = 0; i < numSpikes; i++) {
       const sx = this.x + i * spikeW + spikeW / 2;
-
-      // Echo glow
-      if (this.echoAlpha > 0) {
-        p.fill(`rgba(255,80,80,${this.echoAlpha * 0.3})`);
-        if (this.direction === 'up') {
-          p.triangle(
-            sx - spikeW * 0.8, this.y + T,
-            sx + spikeW * 0.8, this.y + T,
-            sx, this.y - 6
-          );
-        } else {
-          p.triangle(
-            sx - spikeW * 0.8, this.y,
-            sx + spikeW * 0.8, this.y,
-            sx, this.y + T + 6
-          );
-        }
-      }
-
-      // Spike body
       p.fill(C.SPIKE_COLOR);
       if (this.direction === 'up') {
         p.triangle(
@@ -52,20 +33,52 @@ class Spike {
           sx, this.y + T - 4
         );
       }
+    }
 
-      // Highlight edge
-      if (this.echoAlpha > 0) {
-        p.stroke(`rgba(255,150,150,${this.echoAlpha})`);
-        p.strokeWeight(1);
-        if (this.direction === 'up') {
-          p.line(sx - spikeW * 0.5, this.y + T, sx, this.y + 4);
-          p.line(sx, this.y + 4, sx + spikeW * 0.5, this.y + T);
-        } else {
-          p.line(sx - spikeW * 0.5, this.y, sx, this.y + T - 4);
-          p.line(sx, this.y + T - 4, sx + spikeW * 0.5, this.y);
-        }
-        p.noStroke();
+    p.pop();
+  }
+
+  // Draw glowing echo outline — called AFTER fog so it shows through the dark
+  drawEchoOutline(p) {
+    if (this.echoAlpha <= 0) return;
+
+    const T = C.TILE;
+    const numSpikes = 3;
+    const spikeW = T / numSpikes;
+    const a = this.echoAlpha;
+
+    p.push();
+
+    for (let i = 0; i < numSpikes; i++) {
+      const sx = this.x + i * spikeW + spikeW / 2;
+
+      let x1, y1, x2, y2, tipX, tipY;
+      if (this.direction === 'up') {
+        x1 = sx - spikeW * 0.5; y1 = this.y + T;
+        x2 = sx + spikeW * 0.5; y2 = this.y + T;
+        tipX = sx; tipY = this.y + 4;
+      } else {
+        x1 = sx - spikeW * 0.5; y1 = this.y;
+        x2 = sx + spikeW * 0.5; y2 = this.y;
+        tipX = sx; tipY = this.y + T - 4;
       }
+
+      // Outer glow
+      p.noFill();
+      p.stroke(`rgba(255,80,80,${a * 0.2})`);
+      p.strokeWeight(6);
+      p.triangle(x1, y1, x2, y2, tipX, tipY);
+
+      // Mid
+      p.stroke(`rgba(255,120,120,${a * 0.55})`);
+      p.strokeWeight(2);
+      p.triangle(x1, y1, x2, y2, tipX, tipY);
+
+      // Sharp tip edge
+      p.stroke(`rgba(255,200,200,${a * 0.9})`);
+      p.strokeWeight(1);
+      p.line(x1, y1, tipX, tipY);
+      p.line(x2, y2, tipX, tipY);
     }
 
     p.pop();

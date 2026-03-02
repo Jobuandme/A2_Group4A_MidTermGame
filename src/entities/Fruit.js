@@ -8,39 +8,57 @@ class Fruit {
     this.color = C.FRUIT_COLORS[this.colorIndex];
     this.bobOffset = Math.random() * Math.PI * 2;
     this.radius = 9;
-    // Particles for collection
-    this.particles = [];
-    this.collectTimer = 0;
   }
 
+  // Draw full fruit — only visible inside vision circle
   draw(p) {
     const bob = Math.sin(Date.now() * 0.003 + this.bobOffset) * 3;
     const cy = this.y + bob;
 
     p.push();
-
-    // Echo glow
-    if (this.echoAlpha > 0) {
-      for (let i = 3; i > 0; i--) {
-        p.noStroke();
-        p.fill(`rgba(${this._hexToRgb(this.color)},${this.echoAlpha * 0.15 * i})`);
-        p.circle(this.x, cy, (this.radius + i * 4) * 2);
-      }
-    }
-
-    // Fruit body
     p.noStroke();
     p.fill(this.color);
     p.circle(this.x, cy, this.radius * 2);
 
-    // Shine
     p.fill('rgba(255,255,255,0.45)');
     p.circle(this.x - this.radius * 0.3, cy - this.radius * 0.3, this.radius * 0.7);
 
-    // Stem
     p.stroke(this._darken(this.color));
     p.strokeWeight(1.5);
     p.line(this.x, cy - this.radius, this.x + 3, cy - this.radius - 5);
+    p.pop();
+  }
+
+  // Draw glowing dot outline — called AFTER fog so it glows through the dark
+  drawEchoOutline(p) {
+    if (this.echoAlpha <= 0) return;
+
+    const bob = Math.sin(Date.now() * 0.003 + this.bobOffset) * 3;
+    const cy = this.y + bob;
+    const a = this.echoAlpha;
+    const rgb = this._hexToRgb(this.color);
+
+    p.push();
+    p.noStroke();
+
+    // Outer bloom
+    p.fill(`rgba(${rgb},${a * 0.12})`);
+    p.circle(this.x, cy, (this.radius + 10) * 2);
+
+    // Mid glow ring
+    p.fill(`rgba(${rgb},${a * 0.25})`);
+    p.circle(this.x, cy, (this.radius + 4) * 2);
+
+    // Sharp outline circle
+    p.noFill();
+    p.stroke(`rgba(${rgb},${a * 0.9})`);
+    p.strokeWeight(1.5);
+    p.circle(this.x, cy, this.radius * 2);
+
+    // Bright dot at center
+    p.noStroke();
+    p.fill(`rgba(255,255,255,${a * 0.6})`);
+    p.circle(this.x, cy, 3);
 
     p.pop();
   }

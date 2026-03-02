@@ -82,21 +82,21 @@ class Level {
     return this.fruitsCollected >= this.data.fruitsNeeded;
   }
 
-  draw(p, echoSystem) {
+  draw(p) {
     // Background
     p.background(C.BG);
 
-    // Draw platforms
+    // Draw platform fills (fog will hide what's outside vision radius)
     for (const plat of this.platforms) {
       plat.draw(p);
     }
 
-    // Draw spikes
+    // Draw spike fills
     for (const spike of this.spikes) {
-      spike.draw(p, echoSystem ? spike.echoAlpha : 0);
+      spike.draw(p);
     }
 
-    // Draw fruits
+    // Draw fruit fills
     for (const fruit of this.fruits) {
       if (!fruit.collected) fruit.draw(p);
     }
@@ -146,5 +146,18 @@ class Level {
            player.x < ex.x + ex.w &&
            player.y + player.h > ex.y &&
            player.y < ex.y + ex.h;
+  }
+
+  // Called AFTER the fog mask — draws glowing outlines on top of darkness
+  drawEchoOutlines(p) {
+    for (const plat of this.platforms) {
+      plat.drawEchoOutline(p);
+    }
+    for (const spike of this.spikes) {
+      spike.drawEchoOutline(p);
+    }
+    for (const fruit of this.fruits) {
+      if (!fruit.collected) fruit.drawEchoOutline(p);
+    }
   }
 }

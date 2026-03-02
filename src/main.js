@@ -153,20 +153,35 @@ function drawPlaying(p) {
   p.background(C.BG);
   p.push();
   camera.apply(p);
-  level.draw(p, echoSystem);
+  level.draw(p);          // platform/spike/fruit fills (fog will cover most of this)
+  p.pop();
+
+  // Fog of war — applied in screen space, covers everything drawn so far
+  const ps = camera.worldToScreen(player.cx, player.cy);
+  visSystem.apply(p, ps.x, ps.y, C.WIDTH, C.HEIGHT);
+
+  // Echo outlines drawn AFTER fog so they glow through the darkness
+  if (echoSystem.active) {
+    p.push();
+    camera.apply(p);
+    level.drawEchoOutlines(p);
+    p.pop();
+  }
+
+  // Pulse ring and player drawn on top of everything
+  p.push();
+  camera.apply(p);
   echoSystem.drawPulse(p);
   player.draw(p);
   p.pop();
 
-  const ps = camera.worldToScreen(player.cx, player.cy);
-  visSystem.apply(p, ps.x, ps.y, C.WIDTH, C.HEIGHT);
   hud.draw(p, player, level, echoSystem);
 }
 
 function drawDead(p) {
   respawnTimer++;
   p.background(C.BG);
-  p.push(); camera.apply(p); level.draw(p, null); p.pop();
+  p.push(); camera.apply(p); level.draw(p); p.pop();
 
   p.noStroke();
   p.fill('rgba(10,8,18,0.78)');
@@ -188,7 +203,7 @@ function drawDead(p) {
 function drawLevelWin(p) {
   transitionTimer++;
   p.background(C.BG);
-  p.push(); camera.apply(p); level.draw(p, null); player.draw(p); p.pop();
+  p.push(); camera.apply(p); level.draw(p); player.draw(p); p.pop();
 
   const alpha = Math.min(0.85, transitionTimer / 60);
   p.noStroke(); p.fill(`rgba(10,8,18,${alpha})`); p.rect(0, 0, C.WIDTH, C.HEIGHT);
