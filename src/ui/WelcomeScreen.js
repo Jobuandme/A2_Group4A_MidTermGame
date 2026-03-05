@@ -73,7 +73,7 @@ class WelcomeScreen {
     if (Math.floor(this.timer / 30) % 2 === 0) {
       p.textSize(15);
       p.fill('#a78bfa');
-      p.text('Press ENTER or SPACE to begin', p.width / 2, p.height * 0.72);
+      p.text('Press ENTER to begin', p.width / 2, p.height * 0.72);
     }
 
     // Controls preview

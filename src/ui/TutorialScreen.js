@@ -16,7 +16,7 @@ class TutorialScreen {
         title: "Flying & Stamina",
         icon: '⬆',
         lines: [
-          "Hold UP / W / SPACE to fly upward.",
+          "Hold UP / W to fly upward.",
           "Flying drains your STAMINA.",
           "If stamina runs out, you fall!",
           "Hang on any wall, floor, or ceiling to recharge.",
@@ -29,7 +29,7 @@ class TutorialScreen {
           "Press E to send out a sound pulse.",
           "It reveals the edges of all platforms briefly.",
           "There is a short cooldown between uses.",
-          "Use it wisely — the cave is full of surprises.",
+          
         ]
       },
       {
