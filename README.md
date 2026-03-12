@@ -29,7 +29,7 @@ Controls:
 
 - Use "WASD" or the Arrow Keys to control the character
 - Press "E" to "echolocate" and reveal the rest of the map
-- Use "ENTER" to continue to the enxt level
+- Use "ENTER" to continue to the next level
 
 The user starts the game by pressing "Enter" to start the tutorial
 
