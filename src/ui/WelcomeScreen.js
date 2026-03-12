@@ -46,7 +46,7 @@ class WelcomeScreen {
       const h = p.height - 40 - Math.sin(x * 0.04 + this.timer * 0.007 + 2) * 20 - Math.sin(x * 0.1) * 10;
       p.vertex(x, h);
     }
-    p.vertex(p.width, p.height);
+    p.vertex(p.width, p.height); 
     p.endShape(p.CLOSE);
 
     // Animated bat in center
