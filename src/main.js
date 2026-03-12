@@ -12,6 +12,7 @@ let state = STATE.WELCOME;
 
 let welcomeScreen, tutorialScreen;
 let level, player, camera, echoSystem, visSystem, hud;
+let audioManager;
 
 const keys = { left: false, right: false, up: false, space: false };
 let currentLevelIndex = 0;
@@ -32,6 +33,7 @@ const sketch = (p) => {
     echoSystem = new Echolocation();
     visSystem  = new Visibility();
     hud        = new HUD();
+    audioManager = new AudioManager();
   };
 
   p.draw = () => {
@@ -48,6 +50,7 @@ const sketch = (p) => {
   p.keyPressed = () => {
     const k = p.key;
     const kc = p.keyCode;
+    audioManager.unlock();  // satisfies browser autoplay policy on first keypress
     if (kc === p.LEFT_ARROW  || k === 'a' || k === 'A') keys.left  = true;
     if (kc === p.RIGHT_ARROW || k === 'd' || k === 'D') keys.right = true;
     if (kc === p.UP_ARROW    || k === 'w' || k === 'W') keys.up    = true;
@@ -57,12 +60,15 @@ const sketch = (p) => {
       echoSystem.pulseX = player.cx;
       echoSystem.pulseY = player.cy;
       echoSystem.trigger(player.cx, player.cy);
+      audioManager.playSonar();
     }
 
     if (kc === p.ENTER || kc === 13) {
       if (state === STATE.WELCOME) {
+        audioManager.startBgm();
         state = STATE.TUTORIAL;
       } else if (state === STATE.TUTORIAL) {
+        audioManager.playWhoosh();
         tutorialScreen.nextPage();
         if (tutorialScreen.isDone) {
           loadLevel(0);
@@ -107,6 +113,7 @@ function loadLevel(index) {
   echoSystem = new Echolocation();
   hud = new HUD();
   hud.showMessage(level.data.name, 120);
+  if (audioManager) audioManager.startBgm();
 }
 
 // ── State draw functions ──────────────────────────────────────────────────
@@ -123,24 +130,32 @@ function drawTutorial(p) {
 
 function drawPlaying(p) {
   player.update(keys, level.platforms);
+  audioManager.update(player);
 
   for (const fruit of level.fruits) {
     if (!fruit.collected && fruit.collidesWith(player)) {
       level.collectFruit(fruit);
+      audioManager.playCrunch();
       if (level.fruitsRemaining === 0) hud.showMessage('Find the exit! ▶', 150);
     }
   }
 
   for (const spike of level.spikes) {
-    if (spike.collidesWith(player)) player.takeDamage();
+    if (spike.collidesWith(player)) {
+      const hpBefore = player.hp;
+      player.takeDamage();
+      if (player.hp < hpBefore) audioManager.playHurt();
+    }
   }
 
   if (player.dead && player.deathTimer > 60) {
+    audioManager.stopAll();
     state = STATE.DEAD;
     respawnTimer = 0;
   }
 
   if (level.checkExitCollision(player)) {
+    audioManager.stopAll();
     transitionTimer = 0;
     state = currentLevelIndex + 1 < LEVELS.length ? STATE.LEVEL_WIN : STATE.GAME_WIN;
   }
