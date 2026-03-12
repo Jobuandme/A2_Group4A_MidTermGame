@@ -64,8 +64,6 @@ The tutorial will be redesigned as a playable sequence instead of a slideshow, a
 
 ## Assets
 
-## Audio Credits
-
 ### Sound Effects — [Mixkit](https://mixkit.co) (Free License)
 
 | File                     | Description                           |
@@ -84,19 +82,3 @@ The tutorial will be redesigned as a playable sequence instead of a slideshow, a
 | `sonar.mp3`   | Echolocation ping (E key) |
 
 ## References
-
-Mixkit. (n.d.). _Bat wing flap loop_ [Sound effect]. Mixkit. https://mixkit.co
-
-Mixkit. (n.d.). _Pavement walk footstep loop_ [Sound effect]. Mixkit. https://mixkit.co
-
-Mixkit. (n.d.). _Apple crunch_ [Sound effect]. Mixkit. https://mixkit.co
-
-Mixkit. (n.d.). _Damage hurt hit_ [Sound effect]. Mixkit. https://mixkit.co
-
-Mixkit. (n.d.). _Whoosh transition_ [Sound effect]. Mixkit. https://mixkit.co
-
-Pixabay. (n.d.). _Sonar ping_ [Sound effect]. Pixabay. https://pixabay.com
-
-Pixabay. (n.d.). _Game background music_ [Music]. Pixabay. https://pixabay.com
-
----
