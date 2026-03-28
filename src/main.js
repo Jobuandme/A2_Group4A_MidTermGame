@@ -12,15 +12,18 @@ let state = STATE.WELCOME;
 
 let welcomeScreen, tutorialScreen;
 let level, player, camera, echoSystem, visSystem, hud;
-let audioManager;
 
-const keys = { left: false, right: false, up: false, space: false };
+const keys = { left: false, right: false, up: false, down: false, space: false };
 let currentLevelIndex = 0;
 let transitionTimer = 0;
 let respawnTimer = 0;
 
 // ── p5 instance mode ──────────────────────────────────────────────────────
 const sketch = (p) => {
+
+  p.preload = () => {
+    SPRITES.load(p);
+  };
 
   p.setup = () => {
     const canvas = p.createCanvas(C.WIDTH, C.HEIGHT);
@@ -33,7 +36,6 @@ const sketch = (p) => {
     echoSystem = new Echolocation();
     visSystem  = new Visibility();
     hud        = new HUD();
-    audioManager = new AudioManager();
   };
 
   p.draw = () => {
@@ -50,25 +52,22 @@ const sketch = (p) => {
   p.keyPressed = () => {
     const k = p.key;
     const kc = p.keyCode;
-    audioManager.unlock();  // satisfies browser autoplay policy on first keypress
     if (kc === p.LEFT_ARROW  || k === 'a' || k === 'A') keys.left  = true;
     if (kc === p.RIGHT_ARROW || k === 'd' || k === 'D') keys.right = true;
     if (kc === p.UP_ARROW    || k === 'w' || k === 'W') keys.up    = true;
+    if (kc === p.DOWN_ARROW  || k === 's' || k === 'S') keys.down  = true;
     if (k === ' ') keys.space = true;
 
     if ((k === 'e' || k === 'E') && state === STATE.PLAYING) {
       echoSystem.pulseX = player.cx;
       echoSystem.pulseY = player.cy;
       echoSystem.trigger(player.cx, player.cy);
-      audioManager.playSonar();
     }
 
     if (kc === p.ENTER || kc === 13) {
       if (state === STATE.WELCOME) {
-        audioManager.startBgm();
         state = STATE.TUTORIAL;
       } else if (state === STATE.TUTORIAL) {
-        audioManager.playWhoosh();
         tutorialScreen.nextPage();
         if (tutorialScreen.isDone) {
           loadLevel(0);
@@ -96,6 +95,7 @@ const sketch = (p) => {
     if (kc === p.LEFT_ARROW  || k === 'a' || k === 'A') keys.left  = false;
     if (kc === p.RIGHT_ARROW || k === 'd' || k === 'D') keys.right = false;
     if (kc === p.UP_ARROW    || k === 'w' || k === 'W') keys.up    = false;
+    if (kc === p.DOWN_ARROW  || k === 's' || k === 'S') keys.down  = false;
     if (k === ' ') keys.space = false;
     return false;
   };
@@ -113,7 +113,6 @@ function loadLevel(index) {
   echoSystem = new Echolocation();
   hud = new HUD();
   hud.showMessage(level.data.name, 120);
-  if (audioManager) audioManager.startBgm();
 }
 
 // ── State draw functions ──────────────────────────────────────────────────
@@ -130,32 +129,24 @@ function drawTutorial(p) {
 
 function drawPlaying(p) {
   player.update(keys, level.platforms);
-  audioManager.update(player);
 
   for (const fruit of level.fruits) {
     if (!fruit.collected && fruit.collidesWith(player)) {
       level.collectFruit(fruit);
-      audioManager.playCrunch();
       if (level.fruitsRemaining === 0) hud.showMessage('Find the exit! ▶', 150);
     }
   }
 
   for (const spike of level.spikes) {
-    if (spike.collidesWith(player)) {
-      const hpBefore = player.hp;
-      player.takeDamage();
-      if (player.hp < hpBefore) audioManager.playHurt();
-    }
+    if (spike.collidesWith(player)) player.takeDamage();
   }
 
   if (player.dead && player.deathTimer > 60) {
-    audioManager.stopAll();
     state = STATE.DEAD;
     respawnTimer = 0;
   }
 
   if (level.checkExitCollision(player)) {
-    audioManager.stopAll();
     transitionTimer = 0;
     state = currentLevelIndex + 1 < LEVELS.length ? STATE.LEVEL_WIN : STATE.GAME_WIN;
   }
@@ -203,14 +194,14 @@ function drawDead(p) {
   p.rect(0, 0, C.WIDTH, C.HEIGHT);
   p.textAlign(p.CENTER, p.CENTER);
 
-  p.textSize(36); p.fill('#c084fc');
+  p.textSize(36); p.fill('#ff6030');
   p.text('YOU FELL', C.WIDTH / 2, C.HEIGHT / 2 - 30);
 
   p.textSize(14); p.fill(C.TEXT_DIM);
   p.text('The bat tumbles into the dark...', C.WIDTH / 2, C.HEIGHT / 2 + 12);
 
   if (respawnTimer > 80 && Math.floor(respawnTimer / 20) % 2 === 0) {
-    p.textSize(14); p.fill('#a78bfa');
+    p.textSize(14); p.fill('#e8521e');
     p.text('Press ENTER to try again', C.WIDTH / 2, C.HEIGHT / 2 + 52);
   }
 }
@@ -226,12 +217,12 @@ function drawLevelWin(p) {
   if (transitionTimer > 40) {
     const a = Math.min(1, (transitionTimer - 40) / 30);
     p.textAlign(p.CENTER, p.CENTER);
-    p.textSize(40); p.fill(`rgba(192,132,252,${a})`);
+    p.textSize(40); p.fill(`rgba(255,90,40,${a})`);
     p.text('LEVEL CLEAR', C.WIDTH / 2, C.HEIGHT / 2 - 30);
     p.textSize(16); p.fill(`rgba(107,203,119,${a})`);
     p.text(`Fruits: ${level.fruitsCollected} / ${level.data.fruitsNeeded}  ✓`, C.WIDTH / 2, C.HEIGHT / 2 + 16);
     if (transitionTimer > 100 && Math.floor(transitionTimer / 20) % 2 === 0) {
-      p.textSize(14); p.fill(`rgba(167,139,250,${a})`);
+      p.textSize(14); p.fill(`rgba(232,82,30,${a})`);
       p.text('Press ENTER for next level →', C.WIDTH / 2, C.HEIGHT / 2 + 60);
     }
   }
@@ -247,14 +238,14 @@ function drawGameWin(p) {
   }
   const a = Math.min(1, transitionTimer / 60);
   p.textAlign(p.CENTER, p.CENTER);
-  p.textSize(50); p.fill(`rgba(192,132,252,${a})`);
+  p.textSize(50); p.fill(`rgba(255,90,40,${a})`);
   p.text('YOU ESCAPED!', C.WIDTH / 2, C.HEIGHT / 2 - 50);
   p.textSize(18); p.fill(`rgba(226,217,243,${a})`);
   p.text('The bat soars into the moonlit sky...', C.WIDTH / 2, C.HEIGHT / 2);
   p.textSize(13); p.fill(`rgba(107,203,119,${a})`);
   p.text('All levels complete!', C.WIDTH / 2, C.HEIGHT / 2 + 36);
   if (transitionTimer > 120 && Math.floor(transitionTimer / 25) % 2 === 0) {
-    p.textSize(14); p.fill(`rgba(167,139,250,${a})`);
+    p.textSize(14); p.fill(`rgba(232,82,30,${a})`);
     p.text('Press ENTER to play again', C.WIDTH / 2, C.HEIGHT / 2 + 80);
   }
 }

@@ -2,13 +2,12 @@ class Spike {
   constructor(x, y, direction = 'up') {
     this.x = x;
     this.y = y;
-    this.direction = direction; // 'up' or 'down'
+    this.direction = direction;
     this.echoAlpha = 0;
     this.w = C.TILE;
     this.h = C.TILE;
   }
 
-  // Draw spike fill — visible only inside vision circle
   draw(p) {
     const T = C.TILE;
     const numSpikes = 3;
@@ -16,42 +15,28 @@ class Spike {
 
     p.push();
     p.noStroke();
-
     for (let i = 0; i < numSpikes; i++) {
       const sx = this.x + i * spikeW + spikeW / 2;
       p.fill(C.SPIKE_COLOR);
       if (this.direction === 'up') {
-        p.triangle(
-          sx - spikeW * 0.5, this.y + T,
-          sx + spikeW * 0.5, this.y + T,
-          sx, this.y + 4
-        );
+        p.triangle(sx - spikeW * 0.5, this.y + T, sx + spikeW * 0.5, this.y + T, sx, this.y + 4);
       } else {
-        p.triangle(
-          sx - spikeW * 0.5, this.y,
-          sx + spikeW * 0.5, this.y,
-          sx, this.y + T - 4
-        );
+        p.triangle(sx - spikeW * 0.5, this.y, sx + spikeW * 0.5, this.y, sx, this.y + T - 4);
       }
     }
-
     p.pop();
   }
 
-  // Draw glowing echo outline — called AFTER fog so it shows through the dark
   drawEchoOutline(p) {
     if (this.echoAlpha <= 0) return;
-
     const T = C.TILE;
     const numSpikes = 3;
     const spikeW = T / numSpikes;
     const a = this.echoAlpha;
 
     p.push();
-
     for (let i = 0; i < numSpikes; i++) {
       const sx = this.x + i * spikeW + spikeW / 2;
-
       let x1, y1, x2, y2, tipX, tipY;
       if (this.direction === 'up') {
         x1 = sx - spikeW * 0.5; y1 = this.y + T;
@@ -63,24 +48,15 @@ class Spike {
         tipX = sx; tipY = this.y + T - 4;
       }
 
-      // Outer glow
       p.noFill();
-      p.stroke(`rgba(255,80,80,${a * 0.2})`);
-      p.strokeWeight(6);
+      p.stroke(`rgba(255,80,80,${a * 0.2})`);   p.strokeWeight(6);
       p.triangle(x1, y1, x2, y2, tipX, tipY);
-
-      // Mid
-      p.stroke(`rgba(255,120,120,${a * 0.55})`);
-      p.strokeWeight(2);
+      p.stroke(`rgba(255,120,120,${a * 0.55})`); p.strokeWeight(2);
       p.triangle(x1, y1, x2, y2, tipX, tipY);
-
-      // Sharp tip edge
-      p.stroke(`rgba(255,200,200,${a * 0.9})`);
-      p.strokeWeight(1);
+      p.stroke(`rgba(255,200,200,${a * 0.9})`);  p.strokeWeight(1);
       p.line(x1, y1, tipX, tipY);
       p.line(x2, y2, tipX, tipY);
     }
-
     p.pop();
   }
 

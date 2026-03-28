@@ -72,11 +72,11 @@ class Echolocation {
 
     const alpha = Math.max(0, 1 - this.pulseRadius / 600);
     p.noFill();
-    p.stroke(`rgba(192,132,252,${alpha * 0.7})`);
+    p.stroke(`rgba(255,90,40,${alpha * 0.7})`);
     p.strokeWeight(3);
     p.circle(this.pulseX, this.pulseY, this.pulseRadius * 2);
 
-    p.stroke(`rgba(220,190,255,${alpha * 0.3})`);
+    p.stroke(`rgba(255,140,80,${alpha * 0.3})`);
     p.strokeWeight(8);
     p.circle(this.pulseX, this.pulseY, this.pulseRadius * 2 - 10);
   }

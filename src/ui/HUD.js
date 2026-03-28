@@ -46,7 +46,7 @@ class HUD {
     p.textSize(9);
     p.textAlign(p.LEFT, p.TOP);
     p.textFont('monospace');
-    p.text('STAMINA', sbX, sbY - 11);
+    p.text('DIVE STAMINA', sbX, sbY - 11);
 
     // Bar track
     p.fill('rgba(40,30,60,0.9)');
@@ -69,8 +69,8 @@ class HUD {
       p.textSize(9);
       p.textAlign(p.LEFT, p.TOP);
       const pulse = 0.6 + 0.4 * Math.sin(Date.now() * 0.01);
-      p.fill(`rgba(167,139,250,${pulse})`);
-      p.text('⚡ RECHARGING', sbX, sbY + sbH + 4);
+      p.fill(`rgba(232,82,30,${pulse})`);
+      p.text('⚡ HANGING — RECHARGING', sbX, sbY + sbH + 4);
     }
 
     // ── HP ────────────────────────────────────────────────────────────
@@ -83,10 +83,10 @@ class HUD {
     for (let i = 0; i < C.MAX_HP; i++) {
       const hx = hpX + i * 22;
       if (i < player.hp) {
-        p.fill('#7c3aed');
+        p.fill('#c42a0a');
         p.text('♥', hx, hpY);
       } else {
-        p.fill('#3d2654');
+        p.fill('#2a0a06');
         p.text('♥', hx, hpY);
       }
       p.textSize(13);
@@ -105,7 +105,7 @@ class HUD {
 
     // Progress arc
     p.noFill();
-    p.stroke(echoSystem.isReady ? '#c084fc' : '#4a3a6a');
+    p.stroke(echoSystem.isReady ? '#ff6030' : '#5a1a0a');
     p.strokeWeight(3);
     p.arc(ecX, ecY + ecR,
           ecR * 2, ecR * 2,
@@ -157,7 +157,7 @@ class HUD {
       // Shadow
       p.fill(`rgba(0,0,0,${alpha * 0.7})`);
       p.text(this.messageText, p.width / 2 + 1, p.height / 2 + 1);
-      p.fill(`rgba(192,132,252,${alpha})`);
+      p.fill(`rgba(255,90,40,${alpha})`);
       p.text(this.messageText, p.width / 2, p.height / 2);
     }
 

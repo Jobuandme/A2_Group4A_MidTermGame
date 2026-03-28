@@ -7,19 +7,19 @@ class TutorialScreen {
         title: "You Are a Bat",
         icon: '🦇',
         lines: [
-          "You live in the dark.",
-          "You can only see what's close to you.",
-          "The cave stretches far beyond your sight...",
+          "You live hanging from the ceiling.",
+          "Gravity pulls you upward — the ceiling is home.",
+          "The cave floor far below is full of danger...",
         ]
       },
       {
-        title: "Flying & Stamina",
-        icon: '⬆',
+        title: "Diving & Stamina",
+        icon: '⬇',
         lines: [
-          "Hold UP / W to fly upward.",
-          "Flying drains your STAMINA.",
-          "If stamina runs out, you fall!",
-          "Hang on any wall, floor, or ceiling to recharge.",
+          "Hold DOWN / S / SPACE to dive downward.",
+          "Diving drains your STAMINA.",
+          "If stamina runs out, you snap back to the ceiling!",
+          "Hang from any ceiling or wall to recharge.",
         ]
       },
       {
@@ -29,16 +29,16 @@ class TutorialScreen {
           "Press E to send out a sound pulse.",
           "It reveals the edges of all platforms briefly.",
           "There is a short cooldown between uses.",
-          
+          "Use it wisely — the cave hides many threats.",
         ]
       },
       {
         title: "Collect & Escape",
         icon: '🍎',
         lines: [
-          "Find and collect all the fruits in each level.",
+          "Dive down to collect all the fruits.",
           "Once collected, the exit portal will unlock.",
-          "Watch out for spikes — they deal damage!",
+          "Watch out for spikes pointing upward — deadly!",
           "You have 3 hearts. Don't lose them all.",
         ]
       },
@@ -72,7 +72,7 @@ class TutorialScreen {
     // Page indicator dots
     for (let i = 0; i < this.pages.length; i++) {
       const dotX = p.width / 2 - (this.pages.length - 1) * 10 + i * 20;
-      p.fill(i === this.page ? '#c084fc' : '#3d2654');
+      p.fill(i === this.page ? '#ff6030' : '#2a0a06');
       p.circle(dotX, p.height - 30, i === this.page ? 8 : 5);
     }
 
@@ -86,7 +86,7 @@ class TutorialScreen {
 
     // Title
     p.textSize(28);
-    p.fill('#c084fc');
+    p.fill('#ff6030');
     p.text(pg.title, p.width / 2, p.height * 0.42);
 
     // Lines
@@ -103,7 +103,7 @@ class TutorialScreen {
     const allVisible = this.timer > pg.lines.length * 20 + 30;
     if (allVisible && Math.floor(this.timer / 25) % 2 === 0) {
       p.textSize(13);
-      p.fill('#a78bfa');
+      p.fill('#e8521e');
       const isLast = this.page === this.pages.length - 1;
       p.text(isLast ? 'Press ENTER to start!' : 'Press ENTER for next →', p.width / 2, p.height * 0.88);
     }

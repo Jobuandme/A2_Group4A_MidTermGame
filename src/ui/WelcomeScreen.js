@@ -46,7 +46,7 @@ class WelcomeScreen {
       const h = p.height - 40 - Math.sin(x * 0.04 + this.timer * 0.007 + 2) * 20 - Math.sin(x * 0.1) * 10;
       p.vertex(x, h);
     }
-    p.vertex(p.width, p.height); 
+    p.vertex(p.width, p.height);
     p.endShape(p.CLOSE);
 
     // Animated bat in center
@@ -58,10 +58,10 @@ class WelcomeScreen {
 
     // Title shadow / glow
     p.textSize(52);
-    p.fill('rgba(124,58,237,0.3)');
+    p.fill('rgba(180,40,10,0.3)');
     p.text('BLIND FLIGHT', p.width / 2 + 2, titleY + 2);
 
-    p.fill('#c084fc');
+    p.fill('#ff6030');
     p.text('BLIND FLIGHT', p.width / 2, titleY);
 
     // Subtitle
@@ -72,14 +72,14 @@ class WelcomeScreen {
     // Blinking start prompt
     if (Math.floor(this.timer / 30) % 2 === 0) {
       p.textSize(15);
-      p.fill('#a78bfa');
-      p.text('Press ENTER to begin', p.width / 2, p.height * 0.72);
+      p.fill('#e8521e');
+      p.text('Press ENTER or SPACE to begin', p.width / 2, p.height * 0.72);
     }
 
     // Controls preview
     p.textSize(11);
     p.fill(C.TEXT_DIM);
-    p.text('Arrow Keys / WASD — Move & Fly   |   E — Echolocation', p.width / 2, p.height * 0.82);
+    p.text('Arrow Keys / WASD — Move & Dive   |   E — Echolocation', p.width / 2, p.height * 0.82);
   }
 
   _drawCenterBat(p) {
@@ -95,10 +95,10 @@ class WelcomeScreen {
 
     // Wing shadow/glow
     p.noStroke();
-    p.fill('rgba(124,58,237,0.15)');
+    p.fill('rgba(180,40,10,0.15)');
     p.ellipse(0, 4, 50, 20);
 
-    const wColor = '#6d28d9';
+    const wColor = '#9a1f08';
 
     // Wings
     p.fill(wColor);
@@ -123,15 +123,15 @@ class WelcomeScreen {
     p.endShape(p.CLOSE);
 
     // Body
-    p.fill('#3d2654');
+    p.fill('#2a0a06');
     p.ellipse(0, 2, 14, 12);
 
     // Head
-    p.fill('#3d2654');
+    p.fill('#2a0a06');
     p.circle(0, -5, 12);
 
     // Ears
-    p.fill('#3d2654');
+    p.fill('#2a0a06');
     p.triangle(-3, -9, -7, -16, -1, -11);
     p.triangle(3, -9, 7, -16, 1, -11);
     p.fill('rgba(220,140,200,0.6)');
@@ -139,13 +139,13 @@ class WelcomeScreen {
     p.triangle(3, -9, 6, -14, 2, -11);
 
     // Eyes glow
-    p.fill('rgba(192,132,252,0.4)');
+    p.fill('rgba(255,90,40,0.4)');
     p.circle(-3, -5, 7);
     p.circle(3, -5, 7);
     p.fill('#e2d9f3');
     p.circle(-3, -5, 4);
     p.circle(3, -5, 4);
-    p.fill('#1a1025');
+    p.fill('#120504');
     p.circle(-2.5, -5, 2.5);
     p.circle(3.5, -5, 2.5);
 

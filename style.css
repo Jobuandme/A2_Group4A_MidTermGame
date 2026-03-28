@@ -22,9 +22,9 @@ html, body {
 
 #game-container canvas {
   display: block;
-  border: 1px solid #2a2040;
+  border: 1px solid #750f0f;
   box-shadow:
-    0 0 60px rgba(124, 58, 237, 0.25),
-    0 0 120px rgba(124, 58, 237, 0.1);
+    0 0 60px rgba(190, 25, 25, 0.25),
+    0 0 120px rgba(104, 15, 15, 0.1);
   image-rendering: pixelated;
 }
