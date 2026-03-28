@@ -22,7 +22,7 @@ class HUD {
     }
   }
 
-  draw(p, player, level, echoSystem) {
+  draw(p, player, level, echoSystem, isTutorial = false) {
     p.push();
     p.resetMatrix();
 
@@ -124,29 +124,33 @@ class HUD {
     p.fill(C.TEXT_DIM);
     p.text('[E]', ecX, ecY + ecR + ecR + 4);
 
-    // ── Fruit counter ─────────────────────────────────────────────────
-    const fX = p.width / 2;
-    const fY = pad + 2;
-    const pop = this.fruitPopTimer > 0 ? 1 + (this.fruitPopTimer / 30) * 0.3 : 1;
+    // ── Fruit counter (hidden in tutorial) ───────────────────────────
+    if (!isTutorial) {
+      const fX = p.width / 2;
+      const fY = pad + 2;
+      const pop = this.fruitPopTimer > 0 ? 1 + (this.fruitPopTimer / 30) * 0.3 : 1;
 
-    p.noStroke();
-    p.fill('rgba(10,8,18,0.7)');
-    p.rect(fX - 55, fY - 6, 110, 26, 8);
+      p.noStroke();
+      p.fill('rgba(10,8,18,0.7)');
+      p.rect(fX - 55, fY - 6, 110, 26, 8);
 
-    p.textAlign(p.CENTER, p.TOP);
-    p.textSize(11 * pop);
-    const remaining = level.fruitsRemaining;
-    p.fill(remaining === 0 ? '#6bcb77' : C.TEXT_MAIN);
-    const label = remaining === 0
-      ? '✓ Find the exit!'
-      : `🍎 ${level.fruitsCollected} / ${level.data.fruitsNeeded}`;
-    p.text(label, fX, fY);
+      p.textAlign(p.CENTER, p.TOP);
+      p.textSize(11 * pop);
+      const remaining = level.fruitsRemaining;
+      p.fill(remaining === 0 ? '#6bcb77' : C.TEXT_MAIN);
+      const label = remaining === 0
+        ? '✓ Find the exit!'
+        : `🍎 ${level.fruitsCollected} / ${level.data.fruitsNeeded}`;
+      p.text(label, fX, fY);
+    }
 
-    // ── Level name ───────────────────────────────────────────────────
-    p.textAlign(p.CENTER, p.BOTTOM);
-    p.textSize(10);
-    p.fill(C.TEXT_DIM);
-    p.text(level.data.name, p.width / 2, p.height - 8);
+    // ── Level name (hidden in tutorial) ──────────────────────────────
+    if (!isTutorial) {
+      p.textAlign(p.CENTER, p.BOTTOM);
+      p.textSize(10);
+      p.fill(C.TEXT_DIM);
+      p.text(level.data.name, p.width / 2, p.height - 8);
+    }
 
     // ── Center message ───────────────────────────────────────────────
     if (this.messageTimer > 0) {

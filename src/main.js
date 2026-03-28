@@ -1,7 +1,6 @@
 // ── State machine ─────────────────────────────────────────────────────────
 const STATE = {
   WELCOME:   'welcome',
-  TUTORIAL:  'tutorial',
   PLAYING:   'playing',
   DEAD:      'dead',
   LEVEL_WIN: 'level_win',
@@ -10,13 +9,15 @@ const STATE = {
 
 let state = STATE.WELCOME;
 
-let welcomeScreen, tutorialScreen;
+let welcomeScreen;
 let level, player, camera, echoSystem, visSystem, hud;
+let tutorialLevel = null;   // non-null only while playing the tutorial
 
 const keys = { left: false, right: false, up: false, down: false, space: false };
-let currentLevelIndex = 0;
+let currentLevelIndex = 0;  // -1 = tutorial, 0+ = real levels
 let transitionTimer = 0;
 let respawnTimer = 0;
+let echoFiredThisFrame = false;
 
 // ── p5 instance mode ──────────────────────────────────────────────────────
 const sketch = (p) => {
@@ -32,16 +33,15 @@ const sketch = (p) => {
     p.textFont('monospace');
 
     welcomeScreen = new WelcomeScreen();
-    tutorialScreen = new TutorialScreen();
-    echoSystem = new Echolocation();
-    visSystem  = new Visibility();
-    hud        = new HUD();
+    echoSystem    = new Echolocation();
+    visSystem     = new Visibility();
+    hud           = new HUD();
   };
 
   p.draw = () => {
+    echoFiredThisFrame = false;
     switch (state) {
       case STATE.WELCOME:   drawWelcome(p);  break;
-      case STATE.TUTORIAL:  drawTutorial(p); break;
       case STATE.PLAYING:   drawPlaying(p);  break;
       case STATE.DEAD:      drawDead(p);     break;
       case STATE.LEVEL_WIN: drawLevelWin(p); break;
@@ -50,8 +50,9 @@ const sketch = (p) => {
   };
 
   p.keyPressed = () => {
-    const k = p.key;
+    const k  = p.key;
     const kc = p.keyCode;
+
     if (kc === p.LEFT_ARROW  || k === 'a' || k === 'A') keys.left  = true;
     if (kc === p.RIGHT_ARROW || k === 'd' || k === 'D') keys.right = true;
     if (kc === p.UP_ARROW    || k === 'w' || k === 'W') keys.up    = true;
@@ -61,27 +62,27 @@ const sketch = (p) => {
     if ((k === 'e' || k === 'E') && state === STATE.PLAYING) {
       echoSystem.pulseX = player.cx;
       echoSystem.pulseY = player.cy;
-      echoSystem.trigger(player.cx, player.cy);
+      if (echoSystem.trigger(player.cx, player.cy)) {
+        echoFiredThisFrame = true;
+      }
     }
 
     if (kc === p.ENTER || kc === 13) {
       if (state === STATE.WELCOME) {
-        state = STATE.TUTORIAL;
-      } else if (state === STATE.TUTORIAL) {
-        tutorialScreen.nextPage();
-        if (tutorialScreen.isDone) {
-          loadLevel(0);
-          state = STATE.PLAYING;
-        }
+        loadTutorial();
+        state = STATE.PLAYING;
       } else if (state === STATE.DEAD && respawnTimer > 80) {
-        loadLevel(currentLevelIndex);
+        if (currentLevelIndex === -1) {
+          loadTutorial();
+        } else {
+          loadLevel(currentLevelIndex);
+        }
         state = STATE.PLAYING;
       } else if (state === STATE.LEVEL_WIN && transitionTimer > 100) {
         loadLevel(currentLevelIndex + 1);
         state = STATE.PLAYING;
       } else if (state === STATE.GAME_WIN && transitionTimer > 120) {
         currentLevelIndex = 0;
-        tutorialScreen = new TutorialScreen();
         welcomeScreen = new WelcomeScreen();
         state = STATE.WELCOME;
       }
@@ -90,7 +91,7 @@ const sketch = (p) => {
   };
 
   p.keyReleased = () => {
-    const k = p.key;
+    const k  = p.key;
     const kc = p.keyCode;
     if (kc === p.LEFT_ARROW  || k === 'a' || k === 'A') keys.left  = false;
     if (kc === p.RIGHT_ARROW || k === 'd' || k === 'D') keys.right = false;
@@ -103,10 +104,22 @@ const sketch = (p) => {
 
 new p5(sketch);
 
-// ── Level loader ──────────────────────────────────────────────────────────
+// ── Loaders ───────────────────────────────────────────────────────────────
+function loadTutorial() {
+  currentLevelIndex = -1;
+  tutorialLevel = new TutorialLevel();
+  level  = new Level(TUTORIAL_LEVEL_DATA);
+  player = new Player(level.playerStart.x - 11, level.playerStart.y - 8);
+  camera = new Camera();
+  camera.snap(player, level.worldW, level.worldH, C.WIDTH, C.HEIGHT);
+  echoSystem = new Echolocation();
+  hud = new HUD();
+}
+
 function loadLevel(index) {
   currentLevelIndex = index;
-  level = new Level(LEVELS[index]);
+  tutorialLevel = null;
+  level  = new Level(LEVELS[index]);
   player = new Player(level.playerStart.x - 11, level.playerStart.y - 8);
   camera = new Camera();
   camera.snap(player, level.worldW, level.worldH, C.WIDTH, C.HEIGHT);
@@ -122,33 +135,48 @@ function drawWelcome(p) {
   welcomeScreen.draw(p);
 }
 
-function drawTutorial(p) {
-  tutorialScreen.update();
-  tutorialScreen.draw(p);
-}
-
 function drawPlaying(p) {
+  // Update tutorial triggers if in tutorial
+  if (tutorialLevel) {
+    tutorialLevel.update(player, keys, echoFiredThisFrame);
+    // Track fruit collection for tutorial
+    if (level.fruitsCollected > 0) tutorialLevel.markFruitCollected();
+  }
+
   player.update(keys, level.platforms);
 
+  // Fruit collection
   for (const fruit of level.fruits) {
     if (!fruit.collected && fruit.collidesWith(player)) {
       level.collectFruit(fruit);
-      if (level.fruitsRemaining === 0) hud.showMessage('Find the exit! ▶', 150);
+      if (level.fruitsRemaining === 0 && !tutorialLevel) {
+        hud.showMessage('Find the exit! ▶', 150);
+      }
     }
   }
 
+  // Spike damage
   for (const spike of level.spikes) {
     if (spike.collidesWith(player)) player.takeDamage();
   }
 
+  // Death
   if (player.dead && player.deathTimer > 60) {
     state = STATE.DEAD;
     respawnTimer = 0;
   }
 
+  // Exit — tutorial exits into level 0, normal levels chain forward
   if (level.checkExitCollision(player)) {
     transitionTimer = 0;
-    state = currentLevelIndex + 1 < LEVELS.length ? STATE.LEVEL_WIN : STATE.GAME_WIN;
+    if (currentLevelIndex === -1) {
+      // Tutorial complete — go straight into level 0
+      loadLevel(0);
+      hud.showMessage(level.data.name, 120);
+      // Stay in PLAYING state, no win screen for tutorial
+    } else {
+      state = currentLevelIndex + 1 < LEVELS.length ? STATE.LEVEL_WIN : STATE.GAME_WIN;
+    }
   }
 
   camera.update(player, level.worldW, level.worldH, C.WIDTH, C.HEIGHT);
@@ -156,17 +184,19 @@ function drawPlaying(p) {
   echoSystem.applyToLevel(level);
   hud.update(level);
 
+  // ── Draw ──
   p.background(C.BG);
+
   p.push();
   camera.apply(p);
-  level.draw(p);          // platform/spike/fruit fills (fog will cover most of this)
+  level.draw(p);
   p.pop();
 
-  // Fog of war — applied in screen space, covers everything drawn so far
+  // Fog
   const ps = camera.worldToScreen(player.cx, player.cy);
   visSystem.apply(p, ps.x, ps.y, C.WIDTH, C.HEIGHT);
 
-  // Echo outlines drawn AFTER fog so they glow through the darkness
+  // Echo outlines after fog
   if (echoSystem.active) {
     p.push();
     camera.apply(p);
@@ -174,14 +204,18 @@ function drawPlaying(p) {
     p.pop();
   }
 
-  // Pulse ring and player drawn on top of everything
+  // Player + pulse on top
   p.push();
   camera.apply(p);
   echoSystem.drawPulse(p);
   player.draw(p);
   p.pop();
 
-  hud.draw(p, player, level, echoSystem);
+  // HUD — skip fruit counter and level name during tutorial
+  hud.draw(p, player, level, echoSystem, !!tutorialLevel);
+
+  // Tutorial hint overlay
+  if (tutorialLevel) tutorialLevel.draw(p);
 }
 
 function drawDead(p) {
@@ -190,7 +224,7 @@ function drawDead(p) {
   p.push(); camera.apply(p); level.draw(p); p.pop();
 
   p.noStroke();
-  p.fill('rgba(10,8,18,0.78)');
+  p.fill('rgba(15,7,5,0.78)');
   p.rect(0, 0, C.WIDTH, C.HEIGHT);
   p.textAlign(p.CENTER, p.CENTER);
 
@@ -212,7 +246,7 @@ function drawLevelWin(p) {
   p.push(); camera.apply(p); level.draw(p); player.draw(p); p.pop();
 
   const alpha = Math.min(0.85, transitionTimer / 60);
-  p.noStroke(); p.fill(`rgba(10,8,18,${alpha})`); p.rect(0, 0, C.WIDTH, C.HEIGHT);
+  p.noStroke(); p.fill(`rgba(15,7,5,${alpha})`); p.rect(0, 0, C.WIDTH, C.HEIGHT);
 
   if (transitionTimer > 40) {
     const a = Math.min(1, (transitionTimer - 40) / 30);
@@ -240,7 +274,7 @@ function drawGameWin(p) {
   p.textAlign(p.CENTER, p.CENTER);
   p.textSize(50); p.fill(`rgba(255,90,40,${a})`);
   p.text('YOU ESCAPED!', C.WIDTH / 2, C.HEIGHT / 2 - 50);
-  p.textSize(18); p.fill(`rgba(226,217,243,${a})`);
+  p.textSize(18); p.fill(`rgba(240,213,200,${a})`);
   p.text('The bat soars into the moonlit sky...', C.WIDTH / 2, C.HEIGHT / 2);
   p.textSize(13); p.fill(`rgba(107,203,119,${a})`);
   p.text('All levels complete!', C.WIDTH / 2, C.HEIGHT / 2 + 36);
