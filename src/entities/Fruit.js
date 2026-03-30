@@ -1,41 +1,72 @@
+// Fruit types and their effects:
+//   'echo'    — purple  — adds 1 echolocation charge
+//   'heart'   — red     — restores 1 HP
+//   'stamina' — green   — fully refills stamina
+//   'none'    — blue    — no special effect (still counts toward exit unlock)
+
+const FRUIT_TYPES = [
+  { type: 'echo',    color: '#b06aff', label: '+Echo'    },
+  { type: 'heart',   color: '#ff3a3a', label: '+Heart'   },
+  { type: 'stamina', color: '#3dcc55', label: '+Stamina' },
+  { type: 'none',    color: '#4d96ff', label: ''         },
+];
+
 class Fruit {
-  constructor(x, y) {
+  constructor(x, y, type = null) {
     this.x = x;
     this.y = y;
-    this.collected = false;
-    this.echoAlpha = 0;
-    this.colorIndex = Math.floor(Math.random() * C.FRUIT_COLORS.length);
-    this.color = C.FRUIT_COLORS[this.colorIndex];
-    this.bobOffset = Math.random() * Math.PI * 2;
-    this.radius = 9;
+    this.collected  = false;
+    this.echoAlpha  = 0;
+    this.bobOffset  = Math.random() * Math.PI * 2;
+    this.radius     = 9;
+
+    // If no type specified, pick randomly
+    const def = type
+      ? FRUIT_TYPES.find(f => f.type === type) || FRUIT_TYPES[3]
+      : FRUIT_TYPES[Math.floor(Math.random() * FRUIT_TYPES.length)];
+
+    this.type  = def.type;
+    this.color = def.color;
+    this.label = def.label;
+
+    // Pop-up label timer (shown briefly on collection)
+    this.popTimer = 0;
   }
 
   // Draw full fruit — only visible inside vision circle
   draw(p) {
     const bob = Math.sin(Date.now() * 0.003 + this.bobOffset) * 3;
-    const cy = this.y + bob;
+    const cy  = this.y + bob;
 
     p.push();
     p.noStroke();
     p.fill(this.color);
     p.circle(this.x, cy, this.radius * 2);
 
+    // Shine
     p.fill('rgba(255,255,255,0.45)');
     p.circle(this.x - this.radius * 0.3, cy - this.radius * 0.3, this.radius * 0.7);
 
+    // Stem
     p.stroke(this._darken(this.color));
     p.strokeWeight(1.5);
     p.line(this.x, cy - this.radius, this.x + 3, cy - this.radius - 5);
+
+    // Small type indicator dot in center
+    p.noStroke();
+    p.fill('rgba(255,255,255,0.3)');
+    p.circle(this.x, cy, 5);
+
     p.pop();
   }
 
-  // Draw glowing dot outline — called AFTER fog so it glows through the dark
+  // Draw glowing echo outline — called AFTER fog
   drawEchoOutline(p) {
     if (this.echoAlpha <= 0) return;
 
     const bob = Math.sin(Date.now() * 0.003 + this.bobOffset) * 3;
-    const cy = this.y + bob;
-    const a = this.echoAlpha;
+    const cy  = this.y + bob;
+    const a   = this.echoAlpha;
     const rgb = this._hexToRgb(this.color);
 
     p.push();
@@ -49,13 +80,13 @@ class Fruit {
     p.fill(`rgba(${rgb},${a * 0.25})`);
     p.circle(this.x, cy, (this.radius + 4) * 2);
 
-    // Sharp outline circle
+    // Sharp outline
     p.noFill();
     p.stroke(`rgba(${rgb},${a * 0.9})`);
     p.strokeWeight(1.5);
     p.circle(this.x, cy, this.radius * 2);
 
-    // Bright dot at center
+    // Center dot
     p.noStroke();
     p.fill(`rgba(255,255,255,${a * 0.6})`);
     p.circle(this.x, cy, 3);

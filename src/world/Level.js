@@ -38,8 +38,15 @@ class Level {
         } else if (tile === 3) {
           this.spikes.push(new Spike(x, y, 'down'));
         } else if (tile === 4) {
-          // Random fruit type
-          this.fruits.push(new Fruit(x + T / 2, y + T / 2));
+          this.fruits.push(new Fruit(x + T / 2, y + T / 2, 'echo'));    // purple — default
+        } else if (tile === 41) {
+          this.fruits.push(new Fruit(x + T / 2, y + T / 2, 'echo'));    // purple — +echo charge
+        } else if (tile === 42) {
+          this.fruits.push(new Fruit(x + T / 2, y + T / 2, 'heart'));   // red    — +1 HP
+        } else if (tile === 43) {
+          this.fruits.push(new Fruit(x + T / 2, y + T / 2, 'stamina')); // green  — refill stamina
+        } else if (tile === 44) {
+          this.fruits.push(new Fruit(x + T / 2, y + T / 2, 'none'));    // blue   — no effect
         } else if (tile === 5) {
           this.playerStart = { x: x + T / 2, y: y + T / 2 };
         } else if (tile === 6) {

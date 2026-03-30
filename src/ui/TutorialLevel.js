@@ -61,14 +61,14 @@ class TutorialLevel {
       {
         id: 'echo_cooldown',
         triggerX: 28 * T,
-        condition: () => true,
-        message: 'You have a limited number of echoes, so use them wisely!',
+        condition: (pl, tl) => tl.hasUsedEcho,
+        message: 'Echolocation has a cooldown — use it wisely',
       },
       {
         id: 'fruit_hint',
         triggerX: 32 * T,
         condition: () => true,
-        message: 'Collect all the fruit to unlock the exit',
+        message: 'Collect all the fruit to unlock the exit - each fruit has a different effect!',
       },
     ];
   }
@@ -159,10 +159,9 @@ class TutorialLevel {
 //   cols 23–30: darker/complex cave — echo section
 //   cols 31–42: fruit + exit section
 
-
 const TUTORIAL_LEVEL_DATA = {
   name: "Tutorial",
-  fruitsNeeded: 1,
+  fruitsNeeded: 2,
   maxEcho: 3,
   cols: 48,
   rows: 14,
@@ -170,7 +169,7 @@ const TUTORIAL_LEVEL_DATA = {
     // Row 0: solid ceiling all the way across — bat hangs here
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
     // Row 1: second ceiling — spawn point and partial ceiling for hanging variety
-    [1,1,5,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+    [1,1,5,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
     // Row 2: open space
     [1,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,1],
     // Row 3: open — first dive area
@@ -178,9 +177,9 @@ const TUTORIAL_LEVEL_DATA = {
     // Row 4: floating platforms — mid level handholds (sprite tiles)
     [1,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,7,7,7,0,0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,7,7,7,0,0,0,0,1],
     // Row 5: open
-    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,41,0,0,0,0,0,1],
     // Row 6: open — lower area, spikes ahead
-    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,42,0,0,0,0,0,0,0,0,0,0,1],
     // Row 7: open 
     [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
     // Row 8: cave floor platforms — solid cave style (tile 1)
