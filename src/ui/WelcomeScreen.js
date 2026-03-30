@@ -73,13 +73,13 @@ class WelcomeScreen {
     if (Math.floor(this.timer / 30) % 2 === 0) {
       p.textSize(15);
       p.fill('#e8521e');
-      p.text('Press ENTER or SPACE to begin', p.width / 2, p.height * 0.72);
+      p.text('Press ENTER to begin', p.width / 2, p.height * 0.72);
     }
 
     // Controls preview
     p.textSize(11);
     p.fill(C.TEXT_DIM);
-    p.text('Arrow Keys / WASD — Move & Dive   |   E — Echolocation', p.width / 2, p.height * 0.82);
+    p.text('WASD - Move & Dive   |   E - Echolocation', p.width / 2, p.height * 0.82);
   }
 
   _drawCenterBat(p) {
