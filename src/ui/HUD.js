@@ -70,7 +70,7 @@ class HUD {
       p.textAlign(p.LEFT, p.TOP);
       const pulse = 0.6 + 0.4 * Math.sin(Date.now() * 0.01);
       p.fill(`rgba(232,82,30,${pulse})`);
-      p.text('⚡ HANGING — RECHARGING', sbX, sbY + sbH + 4);
+      p.text('RECHARGING', sbX, sbY + sbH + 4);
     }
 
     // ── HP ────────────────────────────────────────────────────────────
@@ -93,17 +93,16 @@ class HUD {
       p.textAlign(p.LEFT, p.TOP);
     }
 
-    // ── Echolocation cooldown ─────────────────────────────────────────
+    // ── Echolocation cooldown + charges ──────────────────────────────
     const ecX = p.width - pad - 40;
     const ecY = pad;
     const ecR = 18;
 
-    // Bg circle
     p.noStroke();
     p.fill('rgba(10,8,18,0.7)');
     p.circle(ecX, ecY + ecR, ecR * 2 + 10);
 
-    // Progress arc
+    // Cooldown arc
     p.noFill();
     p.stroke(echoSystem.isReady ? '#ff6030' : '#5a1a0a');
     p.strokeWeight(3);
@@ -112,9 +111,9 @@ class HUD {
           -Math.PI / 2,
           -Math.PI / 2 + echoSystem.cooldownProgress * Math.PI * 2);
 
-    // Icon
+    // Icon — greyed out when no charges
     p.noStroke();
-    p.fill(echoSystem.isReady ? '#e2d9f3' : '#7c6e99');
+    p.fill(echoSystem.charges > 0 ? (echoSystem.isReady ? '#f0d5c8' : '#7c6e99') : '#3a1208');
     p.textAlign(p.CENTER, p.CENTER);
     p.textSize(14);
     p.text('◎', ecX, ecY + ecR);
@@ -123,6 +122,24 @@ class HUD {
     p.textSize(8);
     p.fill(C.TEXT_DIM);
     p.text('[E]', ecX, ecY + ecR + ecR + 4);
+
+    // Charge dots — one dot per max charge, filled if available
+    const dotR    = 3;
+    const dotGap  = 8;
+    const totalDotW = echoSystem.maxCharges * dotGap - 2;
+    const dotStartX = ecX - totalDotW / 2 + dotR;
+    const dotY = ecY + ecR * 2 + 14;
+
+    for (let i = 0; i < echoSystem.maxCharges; i++) {
+      const dx = dotStartX + i * dotGap;
+      p.noStroke();
+      if (i < echoSystem.charges) {
+        p.fill('#ff6030');
+      } else {
+        p.fill('#3a1208');
+      }
+      p.circle(dx, dotY, dotR * 2);
+    }
 
     // ── Fruit counter (hidden in tutorial) ───────────────────────────
     if (!isTutorial) {

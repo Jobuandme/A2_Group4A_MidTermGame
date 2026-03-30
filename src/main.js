@@ -33,7 +33,6 @@ const sketch = (p) => {
     p.textFont('monospace');
 
     welcomeScreen = new WelcomeScreen();
-    echoSystem    = new Echolocation();
     visSystem     = new Visibility();
     hud           = new HUD();
   };
@@ -112,7 +111,7 @@ function loadTutorial() {
   player = new Player(level.playerStart.x - 11, level.playerStart.y - 8);
   camera = new Camera();
   camera.snap(player, level.worldW, level.worldH, C.WIDTH, C.HEIGHT);
-  echoSystem = new Echolocation();
+  echoSystem = new Echolocation(level.maxEcho);
   hud = new HUD();
 }
 
@@ -123,7 +122,7 @@ function loadLevel(index) {
   player = new Player(level.playerStart.x - 11, level.playerStart.y - 8);
   camera = new Camera();
   camera.snap(player, level.worldW, level.worldH, C.WIDTH, C.HEIGHT);
-  echoSystem = new Echolocation();
+  echoSystem = new Echolocation(level.maxEcho);
   hud = new HUD();
   hud.showMessage(level.data.name, 120);
 }
@@ -148,7 +147,7 @@ function drawPlaying(p) {
   // Fruit collection
   for (const fruit of level.fruits) {
     if (!fruit.collected && fruit.collidesWith(player)) {
-      level.collectFruit(fruit);
+      level.collectFruit(fruit, player, echoSystem);
       if (level.fruitsRemaining === 0 && !tutorialLevel) {
         hud.showMessage('Find the exit! ▶', 150);
       }

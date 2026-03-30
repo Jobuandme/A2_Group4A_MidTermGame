@@ -8,20 +8,22 @@ class Player {
     this.vy = 0;
 
     // Stats
-    this.hp = C.MAX_HP;
+    this.hp      = C.MAX_HP;
     this.stamina = C.MAX_STAMINA;
     this.invincibleTimer = 0;
 
     // State flags
-    this.onCeiling = false;   // touching a ceiling surface (resting state)
-    this.onFloor   = false;   // touching a floor surface (bad — means fell down)
-    this.onWall    = 0;       // -1 left, 0 none, 1 right
-    this.isHanging = false;   // gripping any surface without active diving
-    this.isDiving  = false;   // actively flying downward
-    this.facingRight = true;
-    this.coyoteTimer = 0;
-    this.dead = false;
-    this.deathTimer = 0;
+    this.onCeiling        = false;  // touching ceiling (natural rest state)
+    this.onFloor          = false;  // touching top of a platform from below
+    this.onWall           = 0;      // -1 left, 0 none, 1 right
+    this.isHanging        = false;  // gripping ceiling or wall
+    this.isOnPlatformTop  = false;  // standing/walking on top of a platform
+    this.isDiving         = false;  // actively flying downward
+    this.releaseTimer     = 0;      // counts down after releasing from platform top
+    this.facingRight      = true;
+    this.coyoteTimer      = 0;
+    this.dead             = false;
+    this.deathTimer       = 0;
 
     // Animation
     this.animFrame = 0;
@@ -30,43 +32,51 @@ class Player {
   }
 
   update(keys, platforms) {
-    if (this.dead) {
-      this.deathTimer++;
-      return;
-    }
-
+    if (this.dead) { this.deathTimer++; return; }
     this._handleInput(keys);
     this._applyGravity();
     this._move(platforms);
     this._updateStamina();
     this._updateAnimation();
-
     if (this.invincibleTimer > 0) this.invincibleTimer--;
   }
 
   _handleInput(keys) {
-    // Horizontal movement
+    // W or S while on a platform top = release and start diving
+    if (this.isOnPlatformTop && (keys.up || keys.down || keys.space)) {
+      this.wantsToRelease = true;
+    }
+
+    if (this.isOnPlatformTop && !this.wantsToRelease) {
+      // Slow walk on platform top — no diving, gravity overridden in _move
+      if (keys.left)       { this.vx = -C.WALK_SPEED; this.facingRight = false; }
+      else if (keys.right) { this.vx =  C.WALK_SPEED; this.facingRight = true;  }
+      else                   this.vx *= 0.5;
+      this.isDiving = false;
+      return;
+    }
+
+    // Normal horizontal movement in air
     if (keys.left)       { this.vx = -C.MOVE_SPEED; this.facingRight = false; }
     else if (keys.right) { this.vx =  C.MOVE_SPEED; this.facingRight = true;  }
     else                   this.vx *= 0.7;
 
-    // Dive DOWN — hold S / Down arrow / Space
+    // Dive DOWN — hold S / Down / Space
     const wantsToDive = keys.down || keys.space;
     if (wantsToDive && this.stamina > 0) {
-      this.vy += C.FLY_FORCE;   // FLY_FORCE is positive → moves down
+      this.vy += C.FLY_FORCE;
       this.isDiving = true;
     } else {
       this.isDiving = false;
     }
 
-    // Cap downward dive speed
     if (this.vy > 6) this.vy = 6;
   }
 
   _applyGravity() {
-    // Gravity is negative → accelerates upward toward ceiling
-    this.vy += C.GRAVITY;
-    // Cap upward speed (vy going very negative)
+    // Skip gravity while calmly standing on platform top
+    if (this.isOnPlatformTop && !this.wantsToRelease) return;
+    this.vy += C.GRAVITY;  // negative = pulls upward
     if (this.vy < -C.MAX_FALL_SPEED) this.vy = -C.MAX_FALL_SPEED;
   }
 
@@ -80,36 +90,52 @@ class Player {
     this.y += this.vy;
     info = Physics.resolve(this, platforms);
 
-    // With flipped gravity:
-    // physics "top" collision = bat hit a ceiling surface (good — hang here)
-    // physics "bottom" collision = bat fell onto a floor (bad — bounce back up)
+    // Inverted gravity collision semantics:
+    // info.top    = bat's top hit something above  → that's a ceiling to hang from
+    // info.bottom = bat's bottom hit something below → that's a platform top to stand on
     this.onCeiling = info.top;
     this.onFloor   = info.bottom;
 
-    // Coyote time — grace period after leaving ceiling
+    // Coyote time off ceiling
     if (this.onCeiling) this.coyoteTimer = C.COYOTE_FRAMES;
     else if (this.coyoteTimer > 0) this.coyoteTimer--;
 
-    // Hanging = touching any surface without actively diving
+    // Platform top landing — bat touches top of a platform (physics bottom hit)
+    // Only land if not trying to release and not mid-dive with momentum
+    if (this.onFloor && !this.wantsToRelease) {
+      this.isOnPlatformTop = true;
+      this.vy = 0;
+    } else if (!this.onFloor) {
+      this.isOnPlatformTop = false;
+    }
+
+    // Clear release flag once airborne
+    if (!this.onFloor) this.wantsToRelease = false;
+
+    // Ceiling hang
     this.isHanging = (this.onCeiling || this.onWall !== 0) && !this.isDiving;
 
-    // Wall slide — limit downward speed when pressing into a wall while diving
+    // Wall slide downward while diving against a wall
     if (this.onWall !== 0 && !this.onCeiling && this.vy > C.WALL_SLIDE_SPEED) {
       this.vy = C.WALL_SLIDE_SPEED;
     }
   }
 
   _updateStamina() {
-    if (this.isDiving && !this.isHanging) {
+    if (this.isDiving && !this.isHanging && !this.isOnPlatformTop) {
       this.stamina = Math.max(0, this.stamina - C.STAMINA_DRAIN);
-    } else if (this.isHanging) {
+    } else if (this.isHanging || this.isOnPlatformTop) {
       this.stamina = Math.min(C.MAX_STAMINA, this.stamina + C.STAMINA_REGEN);
     }
   }
 
   _updateAnimation() {
     this.animTimer++;
-    if (this.isDiving) {
+    if (this.isOnPlatformTop) {
+      // Walking animation — slow wing shuffle
+      if (this.animTimer % 14 === 0) this.animFrame = (this.animFrame + 1) % 2;
+      this.wingAngle = Math.sin(this.animTimer * 0.08) * 0.12;
+    } else if (this.isDiving) {
       if (this.animTimer % 6 === 0) this.animFrame = (this.animFrame + 1) % 4;
       this.wingAngle = Math.sin(this.animTimer * 0.3) * 0.4;
     } else if (this.isHanging) {
@@ -125,23 +151,26 @@ class Player {
     if (this.invincibleTimer > 0 || this.dead) return;
     this.hp--;
     this.invincibleTimer = C.INVINCIBLE_FRAMES;
-    this.vy = -3; // knock upward toward ceiling on hit
-    if (this.hp <= 0) {
-      this.dead = true;
-      this.deathTimer = 0;
-    }
+    this.vy = -3;
+    this.isOnPlatformTop = false;
+    this.wantsToRelease  = true;
+    if (this.hp <= 0) { this.dead = true; this.deathTimer = 0; }
   }
+
+  healHp()      { this.hp      = Math.min(C.MAX_HP, this.hp + 1); }
+  refillStamina() { this.stamina = C.MAX_STAMINA; }
 
   respawn(x, y) {
     this.x = x - this.w / 2;
     this.y = y - this.h / 2;
-    this.vx = 0;
-    this.vy = 0;
-    this.hp = C.MAX_HP;
+    this.vx = 0; this.vy = 0;
+    this.hp      = C.MAX_HP;
     this.stamina = C.MAX_STAMINA;
-    this.invincibleTimer = C.INVINCIBLE_FRAMES;
-    this.dead = false;
-    this.deathTimer = 0;
+    this.invincibleTimer  = C.INVINCIBLE_FRAMES;
+    this.dead             = false;
+    this.deathTimer       = 0;
+    this.isOnPlatformTop  = false;
+    this.wantsToRelease   = false;
   }
 
   get cx() { return this.x + this.w / 2; }
@@ -149,10 +178,8 @@ class Player {
 
   draw(p) {
     if (this.dead) { this._drawDeath(p); return; }
-
     const blink = this.invincibleTimer > 0 && Math.floor(this.invincibleTimer / 5) % 2 === 0;
     if (blink) return;
-
     p.push();
     p.translate(this.cx, this.cy);
     if (!this.facingRight) p.scale(-1, 1);
@@ -163,50 +190,43 @@ class Player {
   _drawBat(p) {
     const t = Date.now() * 0.001;
 
-    // Bat is ALWAYS upside-down — hanging from ceiling is the natural state
-    // Flip vertically so feet point up, head points down
-    p.scale(1, -1);
+    if (this.isOnPlatformTop) {
+      // Right-side up — standing on platform top
+      // No vertical flip; bat stands upright on the platform
+    } else {
+      // Upside-down — natural hanging orientation
+      p.scale(1, -1);
+    }
 
     const wingFlap = this.isDiving
       ? Math.sin(t * 12)
-      : (this.isHanging ? 0 : Math.sin(t * 3) * 0.3);
+      : (this.isHanging || this.isOnPlatformTop ? 0 : Math.sin(t * 3) * 0.3);
 
-    // Recharge glow when stamina recovering
-    if (this.isHanging && this.stamina < C.MAX_STAMINA) {
+    // Recharge glow
+    if ((this.isHanging || this.isOnPlatformTop) && this.stamina < C.MAX_STAMINA) {
       p.noStroke();
       p.fill(`rgba(232,82,30,${0.1 + 0.1 * Math.sin(t * 4)})`);
       p.ellipse(0, 0, 40, 20);
     }
 
-    // Left wing
+    // Wings
     p.noStroke();
     p.fill(this._bodyColor());
     const lWingY = -4 + wingFlap * 6;
     p.beginShape();
-    p.vertex(0, -2);
-    p.vertex(-8,  lWingY);
-    p.vertex(-16, lWingY - 2);
-    p.vertex(-12, lWingY + 6);
-    p.vertex(-4,  lWingY + 8);
-    p.vertex(0, 2);
+    p.vertex(0, -2); p.vertex(-8, lWingY); p.vertex(-16, lWingY - 2);
+    p.vertex(-12, lWingY + 6); p.vertex(-4, lWingY + 8); p.vertex(0, 2);
     p.endShape(p.CLOSE);
 
-    // Right wing
     const rWingY = -4 - wingFlap * 6;
     p.beginShape();
-    p.vertex(0, -2);
-    p.vertex(8,   rWingY);
-    p.vertex(16,  rWingY - 2);
-    p.vertex(12,  rWingY + 6);
-    p.vertex(4,   rWingY + 8);
-    p.vertex(0, 2);
+    p.vertex(0, -2); p.vertex(8, rWingY); p.vertex(16, rWingY - 2);
+    p.vertex(12, rWingY + 6); p.vertex(4, rWingY + 8); p.vertex(0, 2);
     p.endShape(p.CLOSE);
 
     // Body
     p.fill(this._bodyColor());
     p.ellipse(0, 2, 14, 12);
-
-    // Belly
     p.fill('rgba(180,80,60,0.4)');
     p.ellipse(0, 4, 8, 7);
 
@@ -218,30 +238,23 @@ class Player {
     p.fill(this._bodyColor());
     p.triangle(-3, -8, -6, -14, -1, -10);
     p.triangle( 3, -8,  6, -14,  1, -10);
-
-    // Inner ears
     p.fill('rgba(210,100,80,0.6)');
     p.triangle(-3, -8, -5, -13, -2, -10);
     p.triangle( 3, -8,  5, -13,  2, -10);
 
     // Eyes
     p.fill('#ffffff');
-    p.circle(-3, -5, 4);
-    p.circle( 3, -5, 4);
-    p.fill('#1a1025');
-    p.circle(-2.5, -5, 2.5);
-    p.circle( 3.5, -5, 2.5);
-
-    // Eye shine
+    p.circle(-3, -5, 4); p.circle(3, -5, 4);
+    p.fill('#120504');
+    p.circle(-2.5, -5, 2.5); p.circle(3.5, -5, 2.5);
     p.fill('rgba(255,255,255,0.8)');
-    p.circle(-2, -6, 1);
-    p.circle( 4, -6, 1);
+    p.circle(-2, -6, 1); p.circle(4, -6, 1);
 
     // Nose
     p.fill('rgba(200,80,60,0.8)');
     p.ellipse(0, -2, 4, 2);
 
-    // Low stamina warning aura
+    // Low stamina aura
     if (this.stamina < C.STAMINA_LOW) {
       const pulse = 0.3 + 0.3 * Math.sin(t * 8);
       p.noFill();
@@ -266,7 +279,7 @@ class Player {
     p.scale(1 - progress * 0.5);
     for (let i = 0; i < 6; i++) {
       const angle = (i / 6) * Math.PI * 2 + progress;
-      const dist = progress * 30;
+      const dist  = progress * 30;
       p.fill(`rgba(220,80,40,${alpha})`);
       p.noStroke();
       p.circle(Math.cos(angle) * dist, Math.sin(angle) * dist, 6);
