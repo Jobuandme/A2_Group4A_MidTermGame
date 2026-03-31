@@ -14,6 +14,7 @@ let level, player, camera, echoSystem, visSystem, hud;
 let tutorialLevel = null;   // non-null only while playing the tutorial
 
 const keys = { left: false, right: false, up: false, down: false, space: false };
+const audioManager = new AudioManager();
 let currentLevelIndex = 0;  // -1 = tutorial, 0+ = real levels
 let transitionTimer = 0;
 let respawnTimer = 0;
@@ -52,6 +53,8 @@ const sketch = (p) => {
     const k  = p.key;
     const kc = p.keyCode;
 
+    audioManager.unlock();
+
     if (kc === p.LEFT_ARROW  || k === 'a' || k === 'A') keys.left  = true;
     if (kc === p.RIGHT_ARROW || k === 'd' || k === 'D') keys.right = true;
     if (kc === p.UP_ARROW    || k === 'w' || k === 'W') keys.up    = true;
@@ -63,6 +66,7 @@ const sketch = (p) => {
       echoSystem.pulseY = player.cy;
       if (echoSystem.trigger(player.cx, player.cy)) {
         echoFiredThisFrame = true;
+        audioManager.playSonar();
       }
     }
 
@@ -113,6 +117,7 @@ function loadTutorial() {
   camera.snap(player, level.worldW, level.worldH, C.WIDTH, C.HEIGHT);
   echoSystem = new Echolocation(level.maxEcho);
   hud = new HUD();
+  audioManager.startBgm();
 }
 
 function loadLevel(index) {
@@ -125,6 +130,7 @@ function loadLevel(index) {
   echoSystem = new Echolocation(level.maxEcho);
   hud = new HUD();
   hud.showMessage(level.data.name, 120);
+  audioManager.startBgm();
 }
 
 // ── State draw functions ──────────────────────────────────────────────────
@@ -143,11 +149,13 @@ function drawPlaying(p) {
   }
 
   player.update(keys, level.platforms);
+  audioManager.update(player);
 
   // Fruit collection
   for (const fruit of level.fruits) {
     if (!fruit.collected && fruit.collidesWith(player)) {
       level.collectFruit(fruit, player, echoSystem);
+      audioManager.playCrunch();
       if (level.fruitsRemaining === 0 && !tutorialLevel) {
         hud.showMessage('Find the exit! ▶', 150);
       }
@@ -156,11 +164,15 @@ function drawPlaying(p) {
 
   // Spike damage
   for (const spike of level.spikes) {
-    if (spike.collidesWith(player)) player.takeDamage();
+    if (spike.collidesWith(player)) {
+      if (player.invincibleTimer === 0) audioManager.playHurt();
+      player.takeDamage();
+    }
   }
 
   // Death
   if (player.dead && player.deathTimer > 60) {
+    audioManager.stopAll();
     state = STATE.DEAD;
     respawnTimer = 0;
   }
