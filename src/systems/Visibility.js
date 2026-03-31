@@ -58,6 +58,11 @@ class Visibility {
       ctx.globalCompositeOperation = 'source-over';
     }
 
+    // Reset p5's transform before writing directly to the underlying context,
+    // then restore so subsequent p5 draw calls aren't affected
+    p.push();
+    p.resetMatrix();
     p.drawingContext.drawImage(this._maskCanvas, 0, 0);
+    p.pop();
   }
 }
