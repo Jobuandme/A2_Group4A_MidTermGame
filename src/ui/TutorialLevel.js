@@ -50,7 +50,7 @@ class TutorialLevel {
         id: 'spike_warning',
         triggerX: 14 * T,
         condition: () => true,
-        message: 'Spikes deal damage if you touch them — watch out!',
+        message: 'Spikes deal damage if you touch them - watch out!',
       },
       {
         id: 'echo_hint',
@@ -62,7 +62,7 @@ class TutorialLevel {
         id: 'echo_cooldown',
         triggerX: 28 * T,
         condition: (pl, tl) => tl.hasUsedEcho,
-        message: 'Echolocation has a cooldown — use it wisely',
+        message: 'Echolocation has a cooldown - use it wisely',
       },
       {
         id: 'fruit_hint',

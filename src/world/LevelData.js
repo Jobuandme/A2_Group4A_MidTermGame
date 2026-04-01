@@ -16,7 +16,7 @@
 const LEVELS = [
   {
     name: "Descent",
-    fruitsNeeded: 3,
+    fruitsNeeded: 2,
     maxEcho: 4,
     cols: 30,
     rows: 16,
