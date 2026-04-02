@@ -8,21 +8,28 @@ class Camera {
   }
 
   update(player, worldW, worldH, viewW, viewH) {
-    // Target: center player in view
-    this.targetX = player.x + player.w / 2 - viewW / 2;
-    this.targetY = player.y + player.h / 2 - viewH / 2;
+    // Guard against NaN player position corrupting the camera
+    const px = isFinite(player.x) ? player.x : this.x;
+    const py = isFinite(player.y) ? player.y : this.y;
 
-    // Clamp to world bounds
+    this.targetX = px + player.w / 2 - viewW / 2;
+    this.targetY = py + player.h / 2 - viewH / 2;
+
     this.targetX = Math.max(0, Math.min(this.targetX, worldW - viewW));
     this.targetY = Math.max(0, Math.min(this.targetY, worldH - viewH));
 
-    // Lerp
     this.x += (this.targetX - this.x) * this.lerpSpeed;
     this.y += (this.targetY - this.y) * this.lerpSpeed;
+
+    // Final safety: if camera position is somehow still invalid, reset to 0
+    if (!isFinite(this.x)) this.x = 0;
+    if (!isFinite(this.y)) this.y = 0;
   }
 
   apply(p) {
-    p.translate(-Math.round(this.x), -Math.round(this.y));
+    const tx = isFinite(this.x) ? -Math.round(this.x) : 0;
+    const ty = isFinite(this.y) ? -Math.round(this.y) : 0;
+    p.translate(tx, ty);
   }
 
   // Convert screen coords to world coords

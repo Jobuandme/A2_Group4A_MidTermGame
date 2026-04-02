@@ -1,8 +1,5 @@
 const Physics = {
-  // Resolves player against all platforms.
-  // Subdivides movement into steps no larger than half a tile to prevent
-  // tunnelling through thin platforms at high velocity.
-  // Returns collision info: { bottom, top, left, right }
+
   resolve(player, platforms) {
     const info = { bottom: false, top: false, left: false, right: false };
 
@@ -42,30 +39,54 @@ const Physics = {
     return info;
   },
 
-  // Move player on one axis in small substeps to prevent tunnelling.
-  // stepSize should be at most half the thinnest platform (half a tile).
   moveX(player, platforms, dx) {
-    const info  = { left: false, right: false };
-    const steps = Math.ceil(Math.abs(dx) / (C.TILE * 0.5)) || 1;
+    const info = { left: false, right: false };
+
+    // Guard: skip move entirely if dx is not a valid finite number
+    if (!isFinite(dx) || dx === 0) {
+      player.vx = 0;
+      return info;
+    }
+
+    const steps = Math.max(1, Math.ceil(Math.abs(dx) / (C.TILE * 0.5)));
     const step  = dx / steps;
 
     for (let i = 0; i < steps; i++) {
       player.x += step;
+      // Safety: if position becomes invalid, snap back and abort
+      if (!isFinite(player.x)) {
+        player.x -= step;
+        player.vx = 0;
+        break;
+      }
       const r = this.resolve(player, platforms);
       if (r.left)  info.left  = true;
       if (r.right) info.right = true;
-      if (r.left || r.right) break; // already resolved, no point continuing
+      if (r.left || r.right) break;
     }
     return info;
   },
 
   moveY(player, platforms, dy) {
-    const info  = { top: false, bottom: false };
-    const steps = Math.ceil(Math.abs(dy) / (C.TILE * 0.5)) || 1;
+    const info = { top: false, bottom: false };
+
+    // Guard: skip move entirely if dy is not a valid finite number
+    if (!isFinite(dy) || dy === 0) {
+      player.vy = 0;
+      return info;
+    }
+
+    const steps = Math.max(1, Math.ceil(Math.abs(dy) / (C.TILE * 0.5)));
     const step  = dy / steps;
 
     for (let i = 0; i < steps; i++) {
       player.y += step;
+      // Safety: if position becomes invalid, snap back and abort
+      if (!isFinite(player.y)) {
+        player.y -= step;
+        player.vy = 0;
+        break;
+      }
       const r = this.resolve(player, platforms);
       if (r.top)    info.top    = true;
       if (r.bottom) info.bottom = true;

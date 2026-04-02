@@ -1,3 +1,11 @@
+// Player movement states — mutually exclusive
+const PSTATE = {
+  HANGING:      'hanging',      // gripping ceiling or wall, stamina recharging
+  PLATFORM_TOP: 'platform_top', // standing on top of a platform, slow walk
+  AIRBORNE:     'airborne',     // free flight, gravity active
+  DIVING:       'diving',       // actively pressing dive key
+};
+
 class Player {
   constructor(x, y) {
     this.x = x;
@@ -12,153 +20,185 @@ class Player {
     this.stamina = C.MAX_STAMINA;
     this.invincibleTimer = 0;
 
-    // State flags
-    this.onCeiling        = false;  // touching ceiling (natural rest state)
-    this.onFloor          = false;  // touching top of a platform from below
-    this.onWall           = 0;      // -1 left, 0 none, 1 right
-    this.isHanging        = false;  // gripping ceiling or wall
-    this.isOnPlatformTop  = false;  // standing/walking on top of a platform
-    this.isDiving         = false;  // actively flying downward
-    this.releaseTimer     = 0;      // counts down after releasing from platform top
-    this.facingRight      = true;
-    this.coyoteTimer      = 0;
-    this.dead             = false;
-    this.deathTimer       = 0;
+    // Single explicit state — no overlapping boolean flags
+    this.pstate      = PSTATE.AIRBORNE;
+    this.facingRight = true;
+    this.dead        = false;
+    this.deathTimer  = 0;
+
+    // Raw collision results from physics (set each frame in _move)
+    this.onCeiling = false;
+    this.onFloor   = false;
+    this.onWall    = 0;
+
+    // Coyote time
+    this.coyoteTimer = 0;
+
+    // Track whether dive key was already held when landing,
+    // so we require a fresh press to release from platform top
+    this._diveHeldLastFrame = false;
 
     // Animation
-    this.animFrame = 0;
     this.animTimer = 0;
-    this.wingAngle = 0;
+    this.animFrame = 0;
   }
 
+  // ── Convenience getters derived from pstate ───────────────────────────
+  get isHanging()       { return this.pstate === PSTATE.HANGING;      }
+  get isOnPlatformTop() { return this.pstate === PSTATE.PLATFORM_TOP; }
+  get isDiving()        { return this.pstate === PSTATE.DIVING;        }
+  get isAirborne()      { return this.pstate === PSTATE.AIRBORNE;      }
+
+  // ── Update ────────────────────────────────────────────────────────────
   update(keys, platforms) {
     if (this.dead) { this.deathTimer++; return; }
+
+    // If position or velocity has somehow become NaN/Infinity, recover
+    // immediately rather than letting it compound into permanent corruption
+    if (!isFinite(this.x) || !isFinite(this.y)) {
+      this.x = platforms.length > 0 ? platforms[0].x + 32 : 100;
+      this.y = platforms.length > 0 ? platforms[0].y + 32 : 100;
+    }
+    if (!isFinite(this.vx)) this.vx = 0;
+    if (!isFinite(this.vy)) this.vy = 0;
+
     this._handleInput(keys);
     this._applyGravity();
     this._move(platforms);
+    this._resolveState(keys);
     this._updateStamina();
     this._updateAnimation();
     if (this.invincibleTimer > 0) this.invincibleTimer--;
   }
 
   _handleInput(keys) {
-    // W or S while on a platform top = release and start diving
-    if (this.isOnPlatformTop && (keys.up || keys.down || keys.space)) {
-      this.wantsToRelease = true;
-    }
-
-    if (this.isOnPlatformTop && !this.wantsToRelease) {
-      // Slow walk on platform top — no diving, gravity overridden in _move
-      if (keys.left)       { this.vx = -C.WALK_SPEED; this.facingRight = false; }
-      else if (keys.right) { this.vx =  C.WALK_SPEED; this.facingRight = true;  }
-      else                   this.vx *= 0.5;
-      this.isDiving = false;
-      return;
-    }
-
-    // Normal horizontal movement in air
+    // Horizontal movement — always available
     if (keys.left)       { this.vx = -C.MOVE_SPEED; this.facingRight = false; }
     else if (keys.right) { this.vx =  C.MOVE_SPEED; this.facingRight = true;  }
-    else                   this.vx *= 0.7;
-
-    // Dive DOWN — hold S / Down / Space
-    const wantsToDive = keys.down || keys.space;
-    if (wantsToDive && this.stamina > 0) {
-      this.vy += C.FLY_FORCE;
-      this.isDiving = true;
-    } else {
-      this.isDiving = false;
+    else {
+      // Slower friction when on platform top
+      this.vx *= (this.pstate === PSTATE.PLATFORM_TOP) ? 0.5 : 0.7;
     }
 
-    if (this.vy > 6) this.vy = 6;
+    // Clamp walk speed on platform top
+    if (this.pstate === PSTATE.PLATFORM_TOP) {
+      this.vx = Math.max(-C.WALK_SPEED, Math.min(C.WALK_SPEED, this.vx));
+    }
+
+    // Dive input — pressing down/space while on platform top releases the bat
+    const wantsDive = keys.down || keys.space;
+    if (wantsDive && this.stamina > 0) {
+      this.vy += C.FLY_FORCE;
+      if (this.vy > 6) this.vy = 6;
+    }
   }
 
   _applyGravity() {
-    // Skip gravity while calmly standing on platform top
-    if (this.isOnPlatformTop && !this.wantsToRelease) return;
-    this.vy += C.GRAVITY;  // negative = pulls upward
+    // Gravity suspended while resting on a surface
+    if (this.pstate === PSTATE.HANGING || this.pstate === PSTATE.PLATFORM_TOP) return;
+    this.vy += C.GRAVITY;
     if (this.vy < -C.MAX_FALL_SPEED) this.vy = -C.MAX_FALL_SPEED;
   }
 
   _move(platforms) {
-    // Move X in substeps to prevent tunnelling
     const infoX = Physics.moveX(this, platforms, this.vx);
     this.onWall = infoX.left ? -1 : (infoX.right ? 1 : 0);
 
-    // Move Y in substeps to prevent tunnelling
     const infoY = Physics.moveY(this, platforms, this.vy);
-
-    // Inverted gravity:
-    // info.top    = bat's top hit something above → ceiling to hang from
-    // info.bottom = bat's bottom hit something below → platform top to stand on
     this.onCeiling = infoY.top;
     this.onFloor   = infoY.bottom;
 
-    // Coyote time off ceiling
     if (this.onCeiling) this.coyoteTimer = C.COYOTE_FRAMES;
     else if (this.coyoteTimer > 0) this.coyoteTimer--;
+  }
 
-    // Platform top landing
-    if (this.onFloor && !this.wantsToRelease) {
-      this.isOnPlatformTop = true;
+  _resolveState(keys) {
+    const diveHeld = keys.down || keys.space;
+    // A "fresh" dive press means the key is down NOW but was not down last frame
+    const diveFreshPress = diveHeld && !this._diveHeldLastFrame;
+    this._diveHeldLastFrame = diveHeld;
+
+    // ── Priority order — first matching condition wins ────────────────
+
+    // 1. Currently on platform top — stay there until a FRESH dive press
+    //    This prevents the bat from immediately bouncing off because the
+    //    player was already holding dive when they landed
+    if (this.pstate === PSTATE.PLATFORM_TOP) {
+      if (this.onFloor && !diveFreshPress) {
+        // Stay on platform — just walk
+        this.vy = 0;
+        return;
+      }
+      // Fresh dive press or no longer touching floor — leave platform
+      this.pstate = PSTATE.AIRBORNE;
+    }
+
+    // 2. On ceiling — hang (unless actively diving away)
+    if (this.onCeiling && !diveHeld) {
+      this.pstate = PSTATE.HANGING;
       this.vy = 0;
-    } else if (!this.onFloor) {
-      this.isOnPlatformTop = false;
+      return;
     }
 
-    // Only clear release flag once the bat has genuinely left the platform
-    // (onFloor was false AND we've moved upward at least a little)
-    if (!this.onFloor && this.vy < 0) this.wantsToRelease = false;
-
-    // Ceiling hang
-    this.isHanging = (this.onCeiling || this.onWall !== 0) && !this.isDiving;
-
-    // Wall slide
-    if (this.onWall !== 0 && !this.onCeiling && this.vy > C.WALL_SLIDE_SPEED) {
-      this.vy = C.WALL_SLIDE_SPEED;
+    // 3. On wall — hang (unless actively diving away)
+    if (this.onWall !== 0 && !diveHeld) {
+      this.pstate = PSTATE.HANGING;
+      if (this.vy > C.WALL_SLIDE_SPEED) this.vy = C.WALL_SLIDE_SPEED;
+      return;
     }
+
+    // 4. Landed on platform top — only enter this state if dive is NOT held
+    //    (prevents landing and instantly bouncing off)
+    if (this.onFloor && !diveHeld) {
+      this.pstate = PSTATE.PLATFORM_TOP;
+      this.vy = 0;
+      return;
+    }
+
+    // 5. Actively pressing dive with stamina
+    if (diveHeld && this.stamina > 0) {
+      this.pstate = PSTATE.DIVING;
+      return;
+    }
+
+    // 6. Default — airborne
+    this.pstate = PSTATE.AIRBORNE;
   }
 
   _updateStamina() {
-    if (this.isDiving && !this.isHanging && !this.isOnPlatformTop) {
+    if (this.pstate === PSTATE.DIVING) {
       this.stamina = Math.max(0, this.stamina - C.STAMINA_DRAIN);
-    } else if (this.isHanging || this.isOnPlatformTop) {
+    } else if (this.pstate === PSTATE.HANGING || this.pstate === PSTATE.PLATFORM_TOP) {
       this.stamina = Math.min(C.MAX_STAMINA, this.stamina + C.STAMINA_REGEN);
     }
   }
 
   _updateAnimation() {
     this.animTimer++;
-    if (this.isOnPlatformTop) {
-      // Walking animation — slow wing shuffle
-      if (this.animTimer % 14 === 0) this.animFrame = (this.animFrame + 1) % 2;
-      this.wingAngle = Math.sin(this.animTimer * 0.08) * 0.12;
-    } else if (this.isDiving) {
-      if (this.animTimer % 6 === 0) this.animFrame = (this.animFrame + 1) % 4;
-      this.wingAngle = Math.sin(this.animTimer * 0.3) * 0.4;
-    } else if (this.isHanging) {
-      this.animFrame = 0;
-      this.wingAngle = 0;
-    } else {
-      if (this.animTimer % 12 === 0) this.animFrame = (this.animFrame + 1) % 2;
-      this.wingAngle = Math.sin(this.animTimer * 0.1) * 0.15;
+    switch (this.pstate) {
+      case PSTATE.PLATFORM_TOP:
+        if (this.animTimer % 14 === 0) this.animFrame = (this.animFrame + 1) % 2;
+        break;
+      case PSTATE.DIVING:
+        if (this.animTimer % 6 === 0) this.animFrame = (this.animFrame + 1) % 4;
+        break;
+      default:
+        if (this.animTimer % 12 === 0) this.animFrame = (this.animFrame + 1) % 2;
     }
   }
 
   takeDamage() {
     if (this.invincibleTimer > 0 || this.dead) return;
     this.hp--;
-    this.invincibleTimer  = C.INVINCIBLE_FRAMES;
-    this.isOnPlatformTop  = false;
-    this.wantsToRelease   = true;
-    // Knock upward — set directly rather than adding so existing velocity
-    // doesn't compound. Clamp so we can't exceed max speed.
-    this.vy = Math.max(-C.MAX_FALL_SPEED, -4);
+    this.invincibleTimer = C.INVINCIBLE_FRAMES;
+    // Knock upward and force airborne so no surface state interferes
+    this.vy = -4;
+    this.pstate = PSTATE.AIRBORNE;
     if (this.hp <= 0) { this.dead = true; this.deathTimer = 0; }
   }
 
-  healHp()      { this.hp      = Math.min(C.MAX_HP, this.hp + 1); }
-  refillStamina() { this.stamina = C.MAX_STAMINA; }
+  healHp()       { this.hp      = Math.min(C.MAX_HP, this.hp + 1); }
+  refillStamina(){ this.stamina = C.MAX_STAMINA; }
 
   respawn(x, y) {
     this.x = x - this.w / 2;
@@ -166,20 +206,25 @@ class Player {
     this.vx = 0; this.vy = 0;
     this.hp      = C.MAX_HP;
     this.stamina = C.MAX_STAMINA;
-    this.invincibleTimer  = C.INVINCIBLE_FRAMES;
-    this.dead             = false;
-    this.deathTimer       = 0;
-    this.isOnPlatformTop  = false;
-    this.wantsToRelease   = false;
+    this.invincibleTimer = C.INVINCIBLE_FRAMES;
+    this.dead        = false;
+    this.deathTimer  = 0;
+    this.pstate      = PSTATE.AIRBORNE;
+    this.onCeiling   = false;
+    this.onFloor     = false;
+    this.onWall      = 0;
+    this.coyoteTimer = 0;
+    this._diveHeldLastFrame = false;
   }
 
   get cx() { return this.x + this.w / 2; }
   get cy() { return this.y + this.h / 2; }
 
+  // ── Drawing ───────────────────────────────────────────────────────────
   draw(p) {
     if (this.dead) { this._drawDeath(p); return; }
     const blink = this.invincibleTimer > 0 && Math.floor(this.invincibleTimer / 5) % 2 === 0;
-    if (blink) return;  // no push yet — safe to return early
+    if (blink) return;
     p.push();
     p.translate(this.cx, this.cy);
     if (!this.facingRight) p.scale(-1, 1);
@@ -190,20 +235,20 @@ class Player {
   _drawBat(p) {
     const t = Date.now() * 0.001;
 
-    if (this.isOnPlatformTop) {
-      // Right-side up — standing on platform top
-      // No vertical flip; bat stands upright on the platform
-    } else {
-      // Upside-down — natural hanging orientation
+    // Platform top = right-side up. All other states = upside-down.
+    if (this.pstate !== PSTATE.PLATFORM_TOP) {
       p.scale(1, -1);
     }
 
-    const wingFlap = this.isDiving
+    const wingFlap = this.pstate === PSTATE.DIVING
       ? Math.sin(t * 12)
-      : (this.isHanging || this.isOnPlatformTop ? 0 : Math.sin(t * 3) * 0.3);
+      : (this.pstate === PSTATE.HANGING || this.pstate === PSTATE.PLATFORM_TOP)
+        ? 0
+        : Math.sin(t * 3) * 0.3;
 
     // Recharge glow
-    if ((this.isHanging || this.isOnPlatformTop) && this.stamina < C.MAX_STAMINA) {
+    if ((this.pstate === PSTATE.HANGING || this.pstate === PSTATE.PLATFORM_TOP)
+        && this.stamina < C.MAX_STAMINA) {
       p.noStroke();
       p.fill(`rgba(232,82,30,${0.1 + 0.1 * Math.sin(t * 4)})`);
       p.ellipse(0, 0, 40, 20);
@@ -254,7 +299,7 @@ class Player {
     p.fill('rgba(200,80,60,0.8)');
     p.ellipse(0, -2, 4, 2);
 
-    // Low stamina aura
+    // Low stamina warning
     if (this.stamina < C.STAMINA_LOW) {
       const pulse = 0.3 + 0.3 * Math.sin(t * 8);
       p.noFill();
