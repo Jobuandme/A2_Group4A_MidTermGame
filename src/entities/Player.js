@@ -81,27 +81,24 @@ class Player {
   }
 
   _move(platforms) {
-    // Move X
-    this.x += this.vx;
-    let info = Physics.resolve(this, platforms);
-    this.onWall = info.left ? -1 : (info.right ? 1 : 0);
+    // Move X in substeps to prevent tunnelling
+    const infoX = Physics.moveX(this, platforms, this.vx);
+    this.onWall = infoX.left ? -1 : (infoX.right ? 1 : 0);
 
-    // Move Y
-    this.y += this.vy;
-    info = Physics.resolve(this, platforms);
+    // Move Y in substeps to prevent tunnelling
+    const infoY = Physics.moveY(this, platforms, this.vy);
 
-    // Inverted gravity collision semantics:
-    // info.top    = bat's top hit something above  → that's a ceiling to hang from
-    // info.bottom = bat's bottom hit something below → that's a platform top to stand on
-    this.onCeiling = info.top;
-    this.onFloor   = info.bottom;
+    // Inverted gravity:
+    // info.top    = bat's top hit something above → ceiling to hang from
+    // info.bottom = bat's bottom hit something below → platform top to stand on
+    this.onCeiling = infoY.top;
+    this.onFloor   = infoY.bottom;
 
     // Coyote time off ceiling
     if (this.onCeiling) this.coyoteTimer = C.COYOTE_FRAMES;
     else if (this.coyoteTimer > 0) this.coyoteTimer--;
 
-    // Platform top landing — bat touches top of a platform (physics bottom hit)
-    // Only land if not trying to release and not mid-dive with momentum
+    // Platform top landing
     if (this.onFloor && !this.wantsToRelease) {
       this.isOnPlatformTop = true;
       this.vy = 0;
@@ -109,13 +106,14 @@ class Player {
       this.isOnPlatformTop = false;
     }
 
-    // Clear release flag once airborne
-    if (!this.onFloor) this.wantsToRelease = false;
+    // Only clear release flag once the bat has genuinely left the platform
+    // (onFloor was false AND we've moved upward at least a little)
+    if (!this.onFloor && this.vy < 0) this.wantsToRelease = false;
 
     // Ceiling hang
     this.isHanging = (this.onCeiling || this.onWall !== 0) && !this.isDiving;
 
-    // Wall slide downward while diving against a wall
+    // Wall slide
     if (this.onWall !== 0 && !this.onCeiling && this.vy > C.WALL_SLIDE_SPEED) {
       this.vy = C.WALL_SLIDE_SPEED;
     }
@@ -150,10 +148,12 @@ class Player {
   takeDamage() {
     if (this.invincibleTimer > 0 || this.dead) return;
     this.hp--;
-    this.invincibleTimer = C.INVINCIBLE_FRAMES;
-    this.vy = -3;
-    this.isOnPlatformTop = false;
-    this.wantsToRelease  = true;
+    this.invincibleTimer  = C.INVINCIBLE_FRAMES;
+    this.isOnPlatformTop  = false;
+    this.wantsToRelease   = true;
+    // Knock upward — set directly rather than adding so existing velocity
+    // doesn't compound. Clamp so we can't exceed max speed.
+    this.vy = Math.max(-C.MAX_FALL_SPEED, -4);
     if (this.hp <= 0) { this.dead = true; this.deathTimer = 0; }
   }
 
@@ -179,7 +179,7 @@ class Player {
   draw(p) {
     if (this.dead) { this._drawDeath(p); return; }
     const blink = this.invincibleTimer > 0 && Math.floor(this.invincibleTimer / 5) % 2 === 0;
-    if (blink) return;
+    if (blink) return;  // no push yet — safe to return early
     p.push();
     p.translate(this.cx, this.cy);
     if (!this.facingRight) p.scale(-1, 1);
